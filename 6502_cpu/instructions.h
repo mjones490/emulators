@@ -38,7 +38,7 @@ extern struct instruction_desc_t instruction_desc[NMONIC_COUNT + 1];
 // For example, to get op code 0x0E, look up that code in the
 // instruction table.
 //
-// Nmonice:     ASL
+// Nmonic:      ASL
 // Bytes:       3
 // Mode:        ABS
 // Clocks:      6
