@@ -299,7 +299,7 @@ INSTRUCTION(PLP)
     value = regs.PS & I;
     regs.PS = pop() & ~B;
 
-    if (regs.PS &= I)
+    if (regs.PS & I)
         set_signal(SIG_SEI);
     else
         set_signal(SIG_CLI);
