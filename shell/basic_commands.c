@@ -12,7 +12,7 @@ void shell_set_accessor(accessor_t accessor)
     shell_accessor = accessor;
 }
 
-static BYTE peek_byte(WORD address)
+BYTE shell_peek_byte(WORD address)
 {
     BYTE value = 0;
     if (NULL != shell_accessor)
@@ -21,7 +21,7 @@ static BYTE peek_byte(WORD address)
 
 }
 
-static BYTE poke_byte(WORD address, BYTE value)
+BYTE shell_poke_byte(WORD address, BYTE value)
 {
     if (NULL != shell_accessor)
         shell_accessor(address, false, value);
@@ -37,7 +37,7 @@ void dump_line(WORD *address)
     BYTE text[17];
     printf("%04x: ", *address);
     for (i = 0; i < 16; i++) {
-        text[i] = peek_byte((*address)++);
+        text[i] = shell_peek_byte((*address)++);
         printf("%02x ", text[i]);
         if (text[i] < 32 || text[i] > 127)
             text[i] = '.';
@@ -91,8 +91,8 @@ int poke(int argc, char **argv)
             ptr = argv[arg_num];
             ptr++;
             while (*ptr && '\"' != *ptr)
-                poke_byte(address++, (BYTE) *(ptr++));
-            poke_byte(address++, 0);
+                shell_poke_byte(address++, (BYTE) *(ptr++));
+            shell_poke_byte(address++, 0);
             continue;               
         }
         
@@ -100,7 +100,7 @@ int poke(int argc, char **argv)
         if (2 == matches) {
             address = (WORD) value;
         } else if (1 == matches) {
-            poke_byte(address++, (BYTE) value);
+            shell_poke_byte(address++, (BYTE) value);
         } else {
             printf("Bad value: %s\n", argv[arg_num]);
             break;
@@ -158,7 +158,7 @@ int move(int argc, char **argv)
         }
 
         for (i = 0; i < len; ++i) {
-            poke_byte(dst, peek_byte(src));
+            shell_poke_byte(dst, shell_peek_byte(src));
             if (from < to) {
                 --src;
                 --dst;
