@@ -35,19 +35,42 @@ static inline void branch(bool d)
     }
 }
 
+static WORD unpack_bcd(BYTE value)
+{
+    return word(value & 0x0f, value >> 4);
+}
+
+static WORD pack_bcd(WORD value)
+{
+    if (lo(value) > 0x09)
+        value += 0x0006;
+    if (hi(value) > 0x09)
+        value += 0x0600;
+
+    return (((value & 0xff00) >> 4) + (value & 0x00ff));
+}
+
 static inline void add()
 {
     static WORD result;
-    result = (WORD)(regs.A + value) + (are_set(C)? 1 : 0);
+    
+    if (regs.PS & D) 
+        result = pack_bcd(
+            unpack_bcd(regs.A) + 
+            unpack_bcd(value) + 
+            (are_set(C)? 1 : 0));
+    else 
+        result = (WORD)(regs.A + value) + (are_set(C)? 1 : 0);
+        
     toggle_flags(C, result & 0x0100);
     result = lo(result);
     toggle_flags(V, (regs.A ^ result) & (value ^ result) & 0x80);
-    if (regs.PS & D) {
+/*   if (regs.PS & D) {
         if ((result & 0x000F) > 0x0009)
             result += 0x0006;
         if ((result & 0x00F0) > 0x0090)
             result += 0x0060;
-    }
+    } */
     regs.A = result;
     test_result(regs.A);
 }
