@@ -11,4 +11,6 @@ command_func_t shell_add_command(char *name, char *description,
     command_func_t function, bool is_repeatable);
 void shell_set_accessor(accessor_t accessor);
 void shell_set_loop_cb(void (*callback)());
+BYTE shell_peek_byte(WORD address);
+BYTE shell_poke_byte(WORD address, BYTE value);
 #endif
