@@ -132,6 +132,13 @@ void shell_set_loop_cb(void (*callback)())
     loop_callback = callback;
 }
 
+void shell_print(char* str)
+{
+    printf("\r%s", str);
+    rl_on_new_line_with_prompt();
+    rl_forced_update_display();
+}
+
 void shell_loop()
 {
     fd_set fds;
