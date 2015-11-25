@@ -205,6 +205,30 @@ BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
     return value;
 }
 
+int anonymous_command(int argc, char **argv)
+{
+    int matches;
+    int value, value2;
+    char c;
+    command_func_t peek_function = shell_get_command_function("peek");
+    command_func_t poke_function = shell_get_command_function("poke");
+   
+    matches = sscanf(argv[1], "%04x%c", &value, &c);
+    if (matches == 2 && c == ':' && NULL != poke_function) {
+        poke_function(argc, argv);
+    } else {
+        matches = sscanf(argv[1], "%04x%c%04x", &value,
+        &c, &value2);
+        if (((2 <= matches && '-' == c) || (1 == matches)) &&
+            (NULL != peek_function))
+            peek_function(argc, argv);
+        else
+            printf("Unknown command \"%s\".\n", argv[1]);
+    }
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     struct page_block_t *my_pb;
@@ -232,6 +256,7 @@ int main(int argc, char **argv)
 
     shell_set_accessor(bus_accessor);
     shell_set_loop_cb(cycle);
+    shell_set_anonymous_command_function(anonymous_command);
     shell_initialize("MarkII");
     cpu_shell_load_commands();
     cpu_init(bus_accessor);
