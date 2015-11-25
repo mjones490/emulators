@@ -13,4 +13,5 @@ void shell_set_accessor(accessor_t accessor);
 void shell_set_loop_cb(void (*callback)());
 BYTE shell_peek_byte(WORD address);
 BYTE shell_poke_byte(WORD address, BYTE value);
+void shell_print(char *string);
 #endif
