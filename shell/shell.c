@@ -77,6 +77,27 @@ static int parse(char *string, char ***argvp)
 }
 
 static bool all_stop = false;
+
+static command_func_t anonymous_command_function = NULL;
+ 
+static void do_anonymous_command(int argc, char **argv)
+{
+    char **new_argv;
+    int i;
+
+    if (NULL == anonymous_command_function) { 
+        printf("Command \"%s\" not found.\n", argv[0]);
+    } else {    
+        new_argv = malloc(sizeof(char *) * (argc + 1));
+        for (i = 0; i < argc; ++i)
+            new_argv[i + 1] = argv[i];
+
+        new_argv[0] = "";
+        anonymous_command_function(argc + 1, new_argv);
+        free(new_argv);    
+    }
+}
+
 static void do_command(int argc, char **argv)
 {
     static struct command_t *prev_cmd = NULL;
@@ -85,7 +106,7 @@ static void do_command(int argc, char **argv)
     if (0 != argc) {
         cmd = find_command(argv[0]);
         if (NULL == cmd) {
-            printf("Command \"%s\" not found.\n", argv[0]);
+            do_anonymous_command(argc, argv);
             prev_cmd = NULL;
         }
     } else {
@@ -137,6 +158,11 @@ void shell_print(char* str)
     printf("\r%s", str);
     rl_on_new_line_with_prompt();
     rl_forced_update_display();
+}
+
+void shell_set_anonymous_command_function(command_func_t command_function)
+{
+    anonymous_command_function = command_function;
 }
 
 void shell_loop()

@@ -55,6 +55,17 @@ struct command_t *find_command(char *name)
     return cmd;
 }
 
+command_func_t shell_get_command_function(char *name)
+{
+    struct command_t *cmd = find_command(name);
+    command_func_t func = NULL;
+
+    if (cmd)
+        func = cmd->function;
+
+   return func;
+}
+
 struct command_t *command_generator(const char *text, int state)
 {
     static int index, len;

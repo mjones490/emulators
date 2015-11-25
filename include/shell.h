@@ -9,9 +9,11 @@ void shell_initialize(char *prompt);
 void shell_finalize();
 command_func_t shell_add_command(char *name, char *description, 
     command_func_t function, bool is_repeatable);
+command_func_t shell_get_command_function(char *name);
 void shell_set_accessor(accessor_t accessor);
 void shell_set_loop_cb(void (*callback)());
 BYTE shell_peek_byte(WORD address);
 BYTE shell_poke_byte(WORD address, BYTE value);
 void shell_print(char *string);
+void shell_set_anonymous_command_function(command_func_t command_function);
 #endif
