@@ -23,7 +23,7 @@ SHELL_LIB := $(SHELL_LIB:%=lib%.a)
 SHELL_LIB_OBJS := $(SHELL_LIB_OBJS:%=%.o)
 EXE_LIBS := $(EXE_LIBS:%=-l%)
 
-all : build_libs $(LIB) $(SHELL_LIB) $(SHELL)
+all : build_libs $(LIB) $(SHELL_LIB) $(EXE)
 
 build_libs :
 	cd ../shell && $(MAKE)

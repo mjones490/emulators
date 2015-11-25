@@ -211,8 +211,8 @@ INSTRUCTION(CPY)
 INSTRUCTION(DEC)
 {
     value = get_operand();
-    test_result(value);       
-    replace_operand(--value);
+    test_result(--value);       
+    replace_operand(value);
 }
 
 INSTRUCTION(DEX)
@@ -234,8 +234,8 @@ INSTRUCTION(EOR)
 INSTRUCTION(INC)
 {
     value = get_operand();
-    test_result(value);       
-    replace_operand(++value);
+    test_result(++value);       
+    replace_operand(value);
 }
 
 INSTRUCTION(INX)
