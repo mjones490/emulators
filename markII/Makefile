@@ -1,12 +1,12 @@
 EXE := markII
-EXE_OBJS := main
-EXE_LIBS := 6502 6502_shell shell readline
+EXE_OBJS := init bus config logging
+EXE_LIBS := 6502 6502_shell Stuff shell readline
 
-INC_DIR = ../include
-LIB_DIR = ../lib
+INC_DIR = ../include Stuff
+LIB_DIR = ../lib . 
 
-CFLAGS = -Wall -g -MMD -MP -D_REENTRANT  -I$(INC_DIR)
-LFLAGS = -Wall -L$(LIB_DIR)
+CFLAGS = -Wall -g -MMD -MP -D_REENTRANT  $(INC_DIR:%=-I%)
+LFLAGS = -Wall $(LIB_DIR:%=-L%)
 
 CP = cp -v
 
