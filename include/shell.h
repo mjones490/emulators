@@ -16,4 +16,6 @@ BYTE shell_peek_byte(WORD address);
 BYTE shell_poke_byte(WORD address, BYTE value);
 void shell_print(char *string);
 void shell_set_anonymous_command_function(command_func_t command_function);
+void shell_read_key();
+bool shell_check_key();
 #endif
