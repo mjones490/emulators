@@ -31,19 +31,19 @@ BYTE shell_poke_byte(WORD address, BYTE value)
 /**********************************************************
     Peek command
  **********************************************************/
-void dump_line(WORD *address)
+void dump_line(WORD *address, int len)
 {
     int i;
     BYTE text[17];
     printf("%04x: ", *address);
-    for (i = 0; i < 16; i++) {
+    for (i = 0; i < len; i++) {
         text[i] = shell_peek_byte((*address)++);
         printf("%02x ", text[i]);
         if (text[i] < 32 || text[i] > 127)
             text[i] = '.';
     }
 
-    text[16] = 0;
+    text[i] = 0;
     printf(" %s\n", text);
 }
 
@@ -52,24 +52,32 @@ int peek(int argc, char **argv)
     int i;
     int start;
     int end;
-    static int lines = 1;
+    int lines = 1;
     static WORD address = 0;
     int matched = 0;
+    int len;
 
     if (2 == argc) { 
         matched = sscanf(argv[1], "%4x-%4x", &start, &end);
-        if (matched) {
-            address = start & 0xfff0;
-            if (matched == 2) 
-                lines = 1 + ((end - start) >> 4);
+        if (matched) {           
+            if (matched == 2) { 
+                len = 1 + (end - start);
+                if (len > 0x10) { 
+                    start &= 0xFFF0;
+                    end |= 0x000F;          
+                    len = (end - start);
+                    lines = 1 + (len >> 4);
+                    len = 0x10;
+                }
+            } else {
+                len = 1;
+            }
+            address = start;
         }
     }
 
-    if (lines < 1)
-        lines = 1;
-
     for (i = 0; i < lines; ++i)
-        dump_line(&address);
+        dump_line(&address, len);
 
     return 0;
 }

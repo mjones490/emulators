@@ -165,24 +165,38 @@ void shell_set_anonymous_command_function(command_func_t command_function)
     anonymous_command_function = command_function;
 }
 
-void shell_loop()
+bool shell_check_key()
 {
     fd_set fds;
     int r;
     struct timeval notime;
+    int i = 0;
 
+    FD_ZERO(&fds);
+    FD_SET(fileno(rl_instream), &fds);
+    notime.tv_sec = 0;
+    notime.tv_usec = 1;
+    r = select(FD_SETSIZE, &fds, NULL, NULL, &notime);
+    if (r < 0)
+        return false;
+    if (FD_ISSET(fileno(rl_instream), &fds))
+        return true;
+    return false;
+}
+
+void shell_read_key()
+{
+    rl_callback_read_char();
+}
+
+void shell_loop()
+{
     while (!all_stop) {
         if (loop_callback)
             loop_callback();
-        FD_ZERO(&fds);
-        FD_SET(fileno(rl_instream), &fds);
-        notime.tv_sec = 0;
-        notime.tv_usec = 0;
-        r = select(FD_SETSIZE, &fds, NULL, NULL, &notime);
-        if (r < 0)
-            return;
-        if (FD_ISSET(fileno(rl_instream), &fds))
-            rl_callback_read_char();
+        // if (!shell_read_key())
+           // return;       
+      
     }
 }
 
