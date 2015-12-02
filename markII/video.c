@@ -12,6 +12,7 @@
 #include "config.h"
 #include "video.h"
 #include "bus.h"
+#include "ROM.h"
 
 struct screen_t {
     SDL_Window *window;
@@ -22,7 +23,13 @@ struct screen_t {
     WORD vsync;
     BYTE hsync;
     BYTE *hi_res_page_1;
+    BYTE *hi_res_page_2;
+    BYTE *text_page_1;
+    BYTE *text_page_2;
+    bool page_2_select;
     WORD scan_line;
+    bool vbl;
+    BYTE *character_ROM;
 };
 
 struct screen_t screen;
@@ -109,6 +116,15 @@ void draw_pattern(BYTE pattern, BYTE row, BYTE column)
     }
 }
 
+void draw_character()
+{
+    WORD display_line = screen.scan_line & 0x3FF;
+    BYTE character = screen.text_page_1[display_line + screen.hsync];
+    BYTE pattern_offset = screen.scan_line >> 10;
+    BYTE pattern = screen.character_ROM[(character << 3) + pattern_offset];
+    draw_pattern(~pattern, screen.vsync, screen.hsync);
+}
+
 inline unsigned int scan_base(unsigned char line)
 {
     return ((line & 0x07) << 10) + 0x28 * (line / 0x40) + 
@@ -118,9 +134,15 @@ inline unsigned int scan_base(unsigned char line)
 void video_clock(BYTE clocks)
 {
     while (--clocks) {
-        if (screen.vsync < 192 && screen.hsync < 40)
-            draw_pattern(screen.hi_res_page_1[screen.scan_line + screen.hsync],
-                screen.vsync, screen.hsync);
+        if (screen.vsync < 192 && screen.hsync < 40) {
+            draw_character();  
+            //if (screen.page_2_select)
+            //    draw_pattern(screen.hi_res_page_2[screen.scan_line + 
+            //      screen.hsync],screen.vsync, screen.hsync);
+            //else
+              //  draw_pattern(screen.hi_res_page_1[screen.scan_line + 
+              //      screen.hsync],screen.vsync, screen.hsync);
+        }
 
         if (++screen.hsync == 65) {
             screen.hsync = 0;
@@ -129,10 +151,39 @@ void video_clock(BYTE clocks)
                 screen.vsync = 0;
             }
 
-            if (screen.vsync < 192)
+            if (screen.vsync < 192) {
+                screen.vbl = false;
                 screen.scan_line = scan_base(screen.vsync);
+            } else {
+                screen.vbl = true;
+            }
         }
     }
+}
+
+/**
+ * Video soft switches
+ */
+const BYTE SS_RDVBL     = 0x19;
+const BYTE SS_RDPAGE2   = 0x1C;
+const BYTE SS_TXTPAGE1  = 0x54;
+const BYTE SS_TXTPAGE2  = 0x55;
+
+BYTE ss_vbl(BYTE switch_no, bool read, BYTE value)
+{
+    return screen.vbl? 0x00 : 0x80;
+}
+
+BYTE ss_page_select(BYTE switch_no, bool read, BYTE value)
+{
+    if (switch_no == SS_RDPAGE2)
+        value = screen.page_2_select? 0x80 : 0x00;
+    else if (switch_no == SS_TXTPAGE1)
+        screen.page_2_select = false;
+    else
+        screen.page_2_select = true;
+
+    return value;
 }
 
 /**
@@ -178,12 +229,10 @@ void configure_video()
         video_config.window_title = "";
     }
     LOG_INF("Title = \"%s\".\n", video_config.window_title);
-    
-    /* 
+     
     video_config.video_ROM = get_config_string("VIDEO", "VIDEO_ROM");
     if (NULL == video_config.video_ROM) 
         LOG_FTL("VIDEO_ROM not found.\n");
-        */
 }
 /**
  * @brief Initialize video subsystem.
@@ -202,58 +251,28 @@ void init_video()
         video_config.scale_quality, video_config.window_title);
 
     pb = get_page_block(0x2000);
-    LOG_DBG("Hi res page 1 page block buffer = %p.\n", pb->buffer); 
+    LOG_DBG("Hi res page block buffer = %p.\n", pb->buffer); 
     screen.hi_res_page_1 = &pb->buffer[pb_offset(pb, 0x2000)];
     LOG_DBG("Hi res page 1 address = %p.\n", screen.hi_res_page_1);
     
+    screen.hi_res_page_2 = &pb->buffer[pb_offset(pb, 0x4000)];
+    LOG_DBG("Hi res page 2 address = %p.\n", screen.hi_res_page_2);
+    
+    pb = get_page_block(0x0400);
+    LOG_DBG("Text page block buffer = %p.\n", pb->buffer);
+    screen.text_page_1 = &pb->buffer[pb_offset(pb, 0x0400)];
+    LOG_DBG("Text page 1 address = %p.\n", screen.text_page_1); 
+    
     screen.scan_line = scan_base(0);
-     
-    // Init base texture
-    //LOG_INF("Initializing base texture.\n");
-    //base_texture = init_base_texture();
 
-    //draw_test_surface();
-/*
-    // Load video ROM.
-    hd = load_ROM(video_config.video_ROM, 8);
-    text_40.texture = init_ROM_texture(base_texture, hd->heap);
-    text_40.scale = 1;
+    // Install soft switches
+    install_soft_switch(SS_RDVBL, SS_READ, ss_vbl);    
+    install_soft_switch(SS_RDPAGE2, SS_READ, ss_page_select);
+    install_soft_switch(SS_TXTPAGE1, SS_RDWR, ss_page_select);
+    install_soft_switch(SS_TXTPAGE2, SS_RDWR, ss_page_select);
 
-    GR.texture = init_GR_texture(base_texture);
-    GR.scale = 1;
-    
-    // Allocate RAM pages
-    LOG_INF("Setting video page RAM.\n");
-    hd = alloc_heap(0x04);
-    page_RAM[0] = set_page_descripter(hd, 0x0000, 
-        video_RAM_access, video_RAM_access);
-    set_page_block(&block_set.blk_0400, page_RAM[0]);
-    
-    current_page_RAM = page_RAM[0];
-    hd = alloc_heap(0x04);
-    page_RAM[1] = set_page_descripter(hd, 0x0000, 
-       video_RAM_access, video_RAM_access);
-    set_page_block(&block_set.blk_0800, page_RAM[1]);
-
-    // Create row base map    
-    text_40.row_map = malloc(24 * sizeof(WORD));
-    for (i = 0; i < 24; ++i) {
-        text_40.row_map[i] = ((i /8) * 0x28) + ((i % 8) * 0x80);
-        LOG_DBG("Row = %d  Base Address = $%04X.\n", i, text_40.row_map[i]);
-    }
-   
-    // Set up soft switches
-    ss_page_2 = set_soft_switch(RDPAGE2, TXTPAGE2, TXTPAGE1, false, 
-        page_switch, SS_RW | SS_NOTIFY_SET | SS_NOTIFY_CLR);
-    ss_alt_char = set_soft_switch(RDALTCHAR, SETALTCHAR, CLRALTCHAR, false,
-        NULL, SS_WO);    
-    ss_mixed = set_soft_switch(RDMIXED, MIXSET, MIXCLR, false, NULL, SS_RW);
-    ss_text = set_soft_switch(RDTEXT, TXTSET, TXTCLR, true, NULL, SS_RW);
-    ss_hires = set_soft_switch(RDHIRES, HIRES, LORES, false, NULL, SS_RW); 
-    init_device(video_refresh_clock);
-
-    init_80_col();
-*/
+    screen.character_ROM = load_ROM(video_config.video_ROM, 8);
+    LOG_DBG("First byte = %02x.\n", screen.character_ROM[0]);
 }
 
 

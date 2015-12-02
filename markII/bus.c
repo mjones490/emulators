@@ -23,7 +23,14 @@ BYTE bus_accessor(WORD address, bool read, BYTE value)
 
 struct page_block_t *create_page_block(BYTE first_page, int total_pages)
 {
-    struct page_block_t *pb = malloc(sizeof(struct page_block_t));
+    struct page_block_t *pb;
+    LOG_INF("Creating page block starting at page %02x, ending at %02x. "
+        "Total pages: %02x.\n", first_page, first_page + total_pages - 1,
+        total_pages);
+    pb = malloc(sizeof(struct page_block_t));
+    if (NULL == pb)
+        LOG_FTL("Unable to alocate page block.\n");
+
     memset(pb, 0, sizeof(struct page_block_t));
     pb->first_page = first_page;
     pb->total_pages = total_pages;
@@ -32,7 +39,9 @@ struct page_block_t *create_page_block(BYTE first_page, int total_pages)
 
 BYTE *create_page_buffer(int total_pages)
 {
-    BYTE *buffer = malloc(total_pages * PAGE_SIZE);
+    BYTE *buffer;
+    LOG_INF("Allocating %04x byte buffer.\n", total_pages * PAGE_SIZE);
+    buffer = malloc(total_pages * PAGE_SIZE);
     memset(buffer, 0, total_pages * PAGE_SIZE);
     return buffer;
 }

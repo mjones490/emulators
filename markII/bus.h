@@ -20,6 +20,7 @@ struct soft_switch_t
 
 #define SS_READ  1
 #define SS_WRITE 2
+#define SS_RDWR  3
 
 BYTE bus_accessor(WORD address, bool read, BYTE value);
 struct page_block_t *create_page_block(BYTE first_page, int total_pages);

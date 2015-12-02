@@ -45,7 +45,7 @@ bool has_clocks()
     Uint32 timer_diff = timer - prev_time;
     static int refresh = 0;
     if (timer_diff >= 17) {
-        if (++diff_count == 60) {
+/*        if (++diff_count == 60) {
             LOG_DBG("Clocks = %d, sleep_loops = %d, wake_loops = %d  \n", 
                 clock_counter, sleep_loops);
             clock_counter = 0;
@@ -53,6 +53,7 @@ bool has_clocks()
             sleep_loops = 0;
             wake_loops = 0;
         }
+  */
         prev_time = timer;
         remaining_clocks += timer_diff * 1004;
     }
@@ -82,7 +83,11 @@ static void cycle()
     } else if (false == prev_state) {
         shell_print("CPU halted.\n");
         prev_state = true;
+    } else if (has_clocks()) {
+        remaining_clocks -= 2;
+        video_clock(2);
     }
+
 /* 
     if (0 == SDL_SemTryWait(shell_key_ready)) {
         LOG_DBG("Have key ready...\n");
@@ -185,7 +190,7 @@ int main(int argc, char **argv)
        
     init_bus();
 
-    my_pb = create_page_block(0, 8);
+    my_pb = create_page_block(0, 16);
     my_pb->buffer = create_page_buffer(my_pb->total_pages);
     my_pb->accessor = RAM_accessor;
     install_page_block(my_pb);
@@ -201,7 +206,7 @@ int main(int argc, char **argv)
     install_soft_switch(0x2A, SS_WRITE, output_soft_switch);
 
     // create some video ram
-    my_pb = create_page_block(0x20, 0x20);
+    my_pb = create_page_block(0x20, 0x40);
     my_pb->buffer = create_page_buffer(my_pb->total_pages);
     my_pb->accessor = RAM_accessor;
     install_page_block(my_pb);

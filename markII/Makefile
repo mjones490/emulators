@@ -1,5 +1,5 @@
 EXE := markII
-EXE_OBJS := init bus config logging video
+EXE_OBJS := bus config init logging ROM video
 EXE_LIBS := 6502 6502_shell Stuff shell readline SDL2
 
 INC_DIR = ../include Stuff /usr/include/SDL2
