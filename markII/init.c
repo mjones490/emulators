@@ -8,7 +8,13 @@
 #include "config.h"
 #include "logging.h"
 #include "bus.h"
+#include "ROM.h"
 #include "video.h"
+#include "keyboard.h"
+
+/**
+ * Timing
+ */
 
 Uint32 prev_time = 0;
 int remaining_clocks = 0;
@@ -43,19 +49,20 @@ bool has_clocks()
 {
     Uint32 timer = SDL_GetTicks();
     Uint32 timer_diff = timer - prev_time;
-    static int refresh = 0;
+    
     if (timer_diff >= 17) {
-/*        if (++diff_count == 60) {
-            LOG_DBG("Clocks = %d, sleep_loops = %d, wake_loops = %d  \n", 
-                clock_counter, sleep_loops);
+        if (++diff_count == 60) {
+//            LOG_DBG("Clocks = %d, sleep_loops = %d, wake_loops = %d  \n", 
+  //              clock_counter, sleep_loops);
             clock_counter = 0;
             diff_count  = 0;
             sleep_loops = 0;
             wake_loops = 0;
         }
-  */
+
         prev_time = timer;
         remaining_clocks += timer_diff * 1004;
+        check_keyboard();
     }
 
     return remaining_clocks > 0;
@@ -85,6 +92,7 @@ static void cycle()
         prev_state = true;
     } else if (has_clocks()) {
         remaining_clocks -= 2;
+        clock_counter += 2;
         video_clock(2);
     }
 
@@ -105,6 +113,19 @@ BYTE RAM_accessor(WORD address, bool read, BYTE value)
             value = pb->buffer[pb_offset(pb, address)];
         else
             pb->buffer[pb_offset(pb, address)] = value;
+    } else {
+        value = 0;
+    }
+
+    return value;
+}
+
+BYTE ROM_accessor(WORD address, bool read, BYTE value)
+{
+    struct page_block_t *pb = get_page_block(address);
+   
+    if (NULL != pb->buffer) {
+        value = pb->buffer[pb_offset(pb, address)];
     } else {
         value = 0;
     }
@@ -179,8 +200,10 @@ int anonymous_command(int argc, char **argv)
     return 0;
 }
 
+
 int main(int argc, char **argv)
 {
+    char *ROM_key;
     struct page_block_t *my_pb;
     struct page_block_t *zpage_pb;
    
@@ -205,13 +228,22 @@ int main(int argc, char **argv)
 
     install_soft_switch(0x2A, SS_WRITE, output_soft_switch);
 
+    // create ROM
+    ROM_key = get_config_string("MARKII", "MAIN_ROM");
+    my_pb = create_page_block(0xc1, 0x3f);
+    my_pb->buffer = load_ROM(ROM_key, 0x3F);
+    my_pb->accessor = ROM_accessor;
+    install_page_block(my_pb);
+
     // create some video ram
     my_pb = create_page_block(0x20, 0x40);
     my_pb->buffer = create_page_buffer(my_pb->total_pages);
     my_pb->accessor = RAM_accessor;
     install_page_block(my_pb);
     init_video();
-     
+
+    init_keyboard();
+
     shell_set_accessor(bus_accessor);
     shell_set_loop_cb(cycle);
     shell_set_anonymous_command_function(anonymous_command);

@@ -22,14 +22,16 @@ struct screen_t {
     int pitch;
     WORD vsync;
     BYTE hsync;
-    BYTE *hi_res_page_1;
-    BYTE *hi_res_page_2;
-    BYTE *text_page_1;
-    BYTE *text_page_2;
+    BYTE *hi_res_page[2];
+    BYTE *text_page[2];
     bool page_2_select;
+    bool text_mode;
+    bool mixed;
     WORD scan_line;
     bool vbl;
     BYTE *character_ROM;
+    bool flash;
+    BYTE flash_count;
 };
 
 struct screen_t screen;
@@ -116,13 +118,46 @@ void draw_pattern(BYTE pattern, BYTE row, BYTE column)
     }
 }
 
-void draw_character()
+static void draw_character()
 {
     WORD display_line = screen.scan_line & 0x3FF;
-    BYTE character = screen.text_page_1[display_line + screen.hsync];
+    BYTE *page = screen.text_page[screen.page_2_select? 1 : 0];
+    BYTE character = page[display_line + screen.hsync];
     BYTE pattern_offset = screen.scan_line >> 10;
     BYTE pattern = screen.character_ROM[(character << 3) + pattern_offset];
-    draw_pattern(~pattern, screen.vsync, screen.hsync);
+    
+    if (screen.hsync == 0 && screen.vsync == 0) {
+        if (++screen.flash_count == 15) {
+            screen.flash_count = 0;
+            screen.flash = !screen.flash;
+        }
+    }
+
+    if (!screen.flash || (character < 0x40 || character >= 0x80))
+        pattern = ~pattern;
+
+    draw_pattern(pattern, screen.vsync, screen.hsync);
+}
+
+static void draw_hgr()
+{
+    BYTE * page;
+
+    if (screen.mixed && screen.vsync >= 160) {
+        draw_character();
+    } else {
+        page = screen.hi_res_page[screen.page_2_select? 1 : 0];
+        draw_pattern(page[screen.scan_line + screen.hsync],
+            screen.vsync, screen.hsync);
+    }
+}
+
+static void select_mode()
+{
+    if (screen.text_mode)
+        draw_character();
+    else
+        draw_hgr();
 }
 
 inline unsigned int scan_base(unsigned char line)
@@ -135,13 +170,7 @@ void video_clock(BYTE clocks)
 {
     while (--clocks) {
         if (screen.vsync < 192 && screen.hsync < 40) {
-            draw_character();  
-            //if (screen.page_2_select)
-            //    draw_pattern(screen.hi_res_page_2[screen.scan_line + 
-            //      screen.hsync],screen.vsync, screen.hsync);
-            //else
-              //  draw_pattern(screen.hi_res_page_1[screen.scan_line + 
-              //      screen.hsync],screen.vsync, screen.hsync);
+            select_mode();  
         }
 
         if (++screen.hsync == 65) {
@@ -165,7 +194,13 @@ void video_clock(BYTE clocks)
  * Video soft switches
  */
 const BYTE SS_RDVBL     = 0x19;
+const BYTE SS_RDTEXT    = 0x1A;
+const BYTE SS_RDMIXED   = 0x1B;
 const BYTE SS_RDPAGE2   = 0x1C;
+const BYTE SS_TXTCLR    = 0x50;
+const BYTE SS_TXTSET    = 0x51;
+const BYTE SS_MIXCLR    = 0x52;
+const BYTE SS_MIXSET    = 0x53;
 const BYTE SS_TXTPAGE1  = 0x54;
 const BYTE SS_TXTPAGE2  = 0x55;
 
@@ -182,6 +217,30 @@ BYTE ss_page_select(BYTE switch_no, bool read, BYTE value)
         screen.page_2_select = false;
     else
         screen.page_2_select = true;
+
+    return value;
+}
+
+BYTE ss_text_mode(BYTE switch_no, bool read, BYTE value)
+{
+    if (switch_no == SS_RDTEXT)
+        value = screen.text_mode? 0x80 : 0x00;
+    else if (switch_no == SS_TXTCLR)
+        screen.text_mode = false;
+    else
+        screen.text_mode = true;
+
+    return value;
+}
+
+BYTE ss_mixed(BYTE switch_no, bool read, BYTE value)
+{
+    if (switch_no == SS_RDMIXED)
+        value = screen.mixed? 0x80 : 0x00;
+    else if (switch_no == SS_MIXCLR)
+        screen.mixed = false;
+    else
+        screen.mixed = true;
 
     return value;
 }
@@ -252,24 +311,38 @@ void init_video()
 
     pb = get_page_block(0x2000);
     LOG_DBG("Hi res page block buffer = %p.\n", pb->buffer); 
-    screen.hi_res_page_1 = &pb->buffer[pb_offset(pb, 0x2000)];
-    LOG_DBG("Hi res page 1 address = %p.\n", screen.hi_res_page_1);
+    screen.hi_res_page[0] = &pb->buffer[pb_offset(pb, 0x2000)];
+    LOG_DBG("Hi res page 1 address = %p.\n", screen.hi_res_page[0]);
     
-    screen.hi_res_page_2 = &pb->buffer[pb_offset(pb, 0x4000)];
-    LOG_DBG("Hi res page 2 address = %p.\n", screen.hi_res_page_2);
+    screen.hi_res_page[1] = &pb->buffer[pb_offset(pb, 0x4000)];
+    LOG_DBG("Hi res page 2 address = %p.\n", screen.hi_res_page[1]);
     
     pb = get_page_block(0x0400);
     LOG_DBG("Text page block buffer = %p.\n", pb->buffer);
-    screen.text_page_1 = &pb->buffer[pb_offset(pb, 0x0400)];
-    LOG_DBG("Text page 1 address = %p.\n", screen.text_page_1); 
+    screen.text_page[0] = &pb->buffer[pb_offset(pb, 0x0400)];
+    LOG_DBG("Text page 1 address = %p.\n", screen.text_page[0]); 
+    
+    screen.text_page[1] = &pb->buffer[pb_offset(pb, 0x0800)];
+    LOG_DBG("Text page 2 address = %p.\n", screen.text_page[1]); 
     
     screen.scan_line = scan_base(0);
 
     // Install soft switches
+    LOG_INF("Installing video soft switches.\n");
     install_soft_switch(SS_RDVBL, SS_READ, ss_vbl);    
     install_soft_switch(SS_RDPAGE2, SS_READ, ss_page_select);
     install_soft_switch(SS_TXTPAGE1, SS_RDWR, ss_page_select);
     install_soft_switch(SS_TXTPAGE2, SS_RDWR, ss_page_select);
+    install_soft_switch(SS_RDTEXT, SS_READ, ss_text_mode);
+    install_soft_switch(SS_TXTCLR, SS_RDWR, ss_text_mode);
+    install_soft_switch(SS_TXTSET, SS_RDWR, ss_text_mode);
+    install_soft_switch(SS_RDMIXED, SS_READ, ss_mixed);
+    install_soft_switch(SS_MIXCLR, SS_RDWR, ss_mixed);
+    install_soft_switch(SS_MIXSET, SS_RDWR, ss_mixed);
+
+    screen.text_mode = true;
+    screen.mixed = true;
+    screen.page_2_select = false;
 
     screen.character_ROM = load_ROM(video_config.video_ROM, 8);
     LOG_DBG("First byte = %02x.\n", screen.character_ROM[0]);
