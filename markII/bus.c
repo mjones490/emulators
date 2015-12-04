@@ -78,18 +78,28 @@ struct soft_switch_t soft_switch[0x100];
 BYTE soft_switch_accessor(WORD address, bool read, BYTE value)
 {
     BYTE switch_no = address & 0x00FF;
-
-    if (read && NULL != soft_switch[switch_no].read_accessor)
-        value = soft_switch[switch_no].read_accessor(switch_no, read, value);
-    else if (!read && NULL != soft_switch[switch_no].write_accessor)
-        soft_switch[switch_no].write_accessor(switch_no, read, value);
-
+  
+    if (read) {
+        if (NULL != soft_switch[switch_no].read_accessor)
+            value = soft_switch[switch_no].read_accessor(switch_no, 
+                read, value);
+        else
+            LOG_DBG("Soft switch %02x not set for read.\n", switch_no);
+    } else {
+        if (!read && NULL != soft_switch[switch_no].write_accessor)
+            soft_switch[switch_no].write_accessor(switch_no, read, value);
+        else
+            LOG_DBG("Soft switch %02x not set for write.\n", switch_no);
+    }
+    
     return value;
 }
 
 void install_soft_switch(BYTE switch_no, int switch_type, 
     soft_switch_accessor_t accessor)
 {
+    LOG_INF("Setting soft switch %02x.\n", switch_no);
+
     if (switch_type & SS_READ)
         soft_switch[switch_no].read_accessor = accessor;
 

@@ -14,24 +14,32 @@
 #include "bus.h"
 #include "ROM.h"
 
+struct scan_line_t {
+    WORD gfx_scan_line;
+    WORD txt_scan_line;
+    BYTE chr_line;
+};
+
 struct screen_t {
-    SDL_Window *window;
-    SDL_Renderer *renderer;
-    SDL_Texture *drawing_texture;
-    Uint16 *pixels;
-    int pitch;
-    WORD vsync;
-    BYTE hsync;
-    BYTE *hi_res_page[2];
-    BYTE *text_page[2];
-    bool page_2_select;
-    bool text_mode;
-    bool mixed;
-    WORD scan_line;
-    bool vbl;
-    BYTE *character_ROM;
-    bool flash;
-    BYTE flash_count;
+    SDL_Window          *window;
+    SDL_Renderer        *renderer;
+    SDL_Texture         *drawing_texture;
+    Uint16              *pixels;
+    int                 pitch;
+    WORD                vsync;
+    BYTE                hsync;
+    BYTE                *hi_res_page[2];
+    BYTE                *text_page[2];
+    bool                page_2_select;
+    bool                text_mode;
+    bool                mixed;
+    bool                vbl;
+    bool                hires;
+    bool                altchar;
+    BYTE                *character_ROM;
+    bool                flash;
+    BYTE                flash_count;
+    struct scan_line_t  scan_line[262];
 };
 
 struct screen_t screen;
@@ -84,7 +92,7 @@ static void init_screen(int w, int h, char *render_scale_quality,
 
     // Create drawing texture
     screen.drawing_texture = SDL_CreateTexture(screen.renderer, 
-        SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 280, 192);
+        SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 280, 2 * 192);
     
     if (screen.drawing_texture != NULL) {
         LOG_DBG("Drawing texture created.\n");
@@ -109,61 +117,67 @@ static void render_screen()
 void draw_pattern(BYTE pattern, BYTE row, BYTE column)
 {
     Uint32 color = 65535;
-    int pixel = (row * 280) + column * 7;
+    int pixel = (row * 280 * 2) + column * 7;
     int i;
 
     for (i = 0; i < 7; ++i) {
         screen.pixels[pixel + i] = (pattern & 0x01)? color : 0;
+        screen.pixels[280 + pixel + i] = (pattern & 0x01)? color : 0;
         pattern >>= 1;
     }
 }
 
 static void draw_character()
 {
-    WORD display_line = screen.scan_line & 0x3FF;
     BYTE *page = screen.text_page[screen.page_2_select? 1 : 0];
-    BYTE character = page[display_line + screen.hsync];
-    BYTE pattern_offset = screen.scan_line >> 10;
-    BYTE pattern = screen.character_ROM[(character << 3) + pattern_offset];
-    
-    if (screen.hsync == 0 && screen.vsync == 0) {
-        if (++screen.flash_count == 15) {
-            screen.flash_count = 0;
-            screen.flash = !screen.flash;
-        }
-    }
+    BYTE character = *(page + screen.scan_line[screen.vsync].txt_scan_line + 
+        screen.hsync);
+    BYTE pattern_offset = screen.scan_line[screen.vsync].chr_line;
+    BYTE pattern;
+     
+    if (!screen.altchar && ((character & 0xc0) == 0x40))
+        character = (character & 0x3f) | (screen.flash? 0x80 : 0x00); 
 
-    if (!screen.flash || (character < 0x40 || character >= 0x80))
-        pattern = ~pattern;
-
-    draw_pattern(pattern, screen.vsync, screen.hsync);
+    pattern = screen.character_ROM[(character << 3) + pattern_offset];
+    draw_pattern(~pattern, screen.vsync, screen.hsync);
 }
 
-static void draw_hgr()
+static void draw_lores()
 {
-    BYTE * page;
+    BYTE *page = screen.text_page[screen.page_2_select? 1 : 0];
+    BYTE block = *(page + screen.scan_line[screen.vsync].txt_scan_line + 
+        screen.hsync);
+    
+    if (!(screen.vsync & 0x04))
+        block &= 0x0f;
+    else
+        block >>= 4;
 
-    if (screen.mixed && screen.vsync >= 160) {
-        draw_character();
-    } else {
-        page = screen.hi_res_page[screen.page_2_select? 1 : 0];
-        draw_pattern(page[screen.scan_line + screen.hsync],
-            screen.vsync, screen.hsync);
-    }
+    block |= (block << 4);
+
+    if (!(screen.hsync & 0x01))
+        block = (block << 2) | (block >> 6);
+        
+    draw_pattern(block, screen.vsync, screen.hsync); 
+}
+
+static void draw_hires()
+{
+    BYTE *page = screen.hi_res_page[screen.page_2_select? 1 : 0];
+    draw_pattern(*(page + screen.scan_line[screen.vsync].gfx_scan_line +
+        screen.hsync), screen.vsync, screen.hsync);
 }
 
 static void select_mode()
 {
-    if (screen.text_mode)
+    if (screen.text_mode || (screen.mixed && screen.vsync >= 160)) {
         draw_character();
-    else
-        draw_hgr();
-}
-
-inline unsigned int scan_base(unsigned char line)
-{
-    return ((line & 0x07) << 10) + 0x28 * (line / 0x40) + 
-        ((line & 0x38) << 4);
+    } else {
+        if (screen.hires)
+            draw_hires();
+        else
+            draw_lores();
+    }
 }
 
 void video_clock(BYTE clocks)
@@ -178,11 +192,14 @@ void video_clock(BYTE clocks)
             if (++screen.vsync == 262) {
                 render_screen();
                 screen.vsync = 0;
+                if (++screen.flash_count == 15) {
+                    screen.flash_count = 0;
+                    screen.flash = !screen.flash;
+                }   
             }
 
             if (screen.vsync < 192) {
                 screen.vbl = false;
-                screen.scan_line = scan_base(screen.vsync);
             } else {
                 screen.vbl = true;
             }
@@ -193,16 +210,22 @@ void video_clock(BYTE clocks)
 /**
  * Video soft switches
  */
-const BYTE SS_RDVBL     = 0x19;
-const BYTE SS_RDTEXT    = 0x1A;
-const BYTE SS_RDMIXED   = 0x1B;
-const BYTE SS_RDPAGE2   = 0x1C;
-const BYTE SS_TXTCLR    = 0x50;
-const BYTE SS_TXTSET    = 0x51;
-const BYTE SS_MIXCLR    = 0x52;
-const BYTE SS_MIXSET    = 0x53;
-const BYTE SS_TXTPAGE1  = 0x54;
-const BYTE SS_TXTPAGE2  = 0x55;
+const BYTE SS_CLRALTCHAR    = 0x0e;
+const BYTE SS_SETALTCHAR    = 0x0f;
+const BYTE SS_RDVBL         = 0x19;
+const BYTE SS_RDTEXT        = 0x1a;
+const BYTE SS_RDMIXED       = 0x1b;
+const BYTE SS_RDPAGE2       = 0x1c;
+const BYTE SS_RDHIRES       = 0x1d;
+const BYTE SS_RDALTCHAR     = 0x1e;
+const BYTE SS_TXTCLR        = 0x50;
+const BYTE SS_TXTSET        = 0x51;
+const BYTE SS_MIXCLR        = 0x52;
+const BYTE SS_MIXSET        = 0x53;
+const BYTE SS_TXTPAGE1      = 0x54;
+const BYTE SS_TXTPAGE2      = 0x55;
+const BYTE SS_LORES         = 0x56;
+const BYTE SS_HIRES         = 0x57;
 
 BYTE ss_vbl(BYTE switch_no, bool read, BYTE value)
 {
@@ -245,6 +268,30 @@ BYTE ss_mixed(BYTE switch_no, bool read, BYTE value)
     return value;
 }
 
+BYTE ss_hires(BYTE switch_no, bool read, BYTE value)
+{
+    if (switch_no == SS_RDHIRES)
+        value = screen.hires? 0x80 : 0x00;
+    else if (switch_no == SS_LORES)
+        screen.hires = false;
+    else
+        screen.hires = true;
+
+    return value;
+}
+
+BYTE ss_altchar(BYTE switch_no, bool read, BYTE value)
+{
+    if (switch_no == SS_RDALTCHAR)
+        value = screen.altchar? 0x80 : 0x00;
+    else if (switch_no == SS_CLRALTCHAR)
+        screen.altchar = false;
+    else
+        screen.altchar = true;
+
+    return value;
+}
+
 /**
  * Load video configuration setting.
  */
@@ -282,7 +329,7 @@ void configure_video()
     }
     LOG_INF("Render scale quality = %s.\n", video_config.scale_quality);
 
-    video_config.window_title = get_config_string("6502", "TITLE");
+    video_config.window_title = get_config_string("MARKII", "TITLE");
     if (NULL == video_config.window_title) {
         LOG_WRN("TITLE not found.  Setting to default.\n");
         video_config.window_title = "";
@@ -301,6 +348,7 @@ void configure_video()
  */
 void init_video()
 {   
+    int i;
     struct page_block_t *pb;
 
     LOG_INF("Initializing screen.\n");
@@ -325,8 +373,6 @@ void init_video()
     screen.text_page[1] = &pb->buffer[pb_offset(pb, 0x0800)];
     LOG_DBG("Text page 2 address = %p.\n", screen.text_page[1]); 
     
-    screen.scan_line = scan_base(0);
-
     // Install soft switches
     LOG_INF("Installing video soft switches.\n");
     install_soft_switch(SS_RDVBL, SS_READ, ss_vbl);    
@@ -339,13 +385,34 @@ void init_video()
     install_soft_switch(SS_RDMIXED, SS_READ, ss_mixed);
     install_soft_switch(SS_MIXCLR, SS_RDWR, ss_mixed);
     install_soft_switch(SS_MIXSET, SS_RDWR, ss_mixed);
+    install_soft_switch(SS_RDHIRES, SS_READ, ss_hires);
+    install_soft_switch(SS_LORES, SS_RDWR, ss_hires);
+    install_soft_switch(SS_HIRES, SS_RDWR, ss_hires);
+    install_soft_switch(SS_RDALTCHAR, SS_READ, ss_altchar);
+    install_soft_switch(SS_CLRALTCHAR, SS_WRITE, ss_altchar);
+    install_soft_switch(SS_SETALTCHAR, SS_WRITE, ss_altchar);
 
     screen.text_mode = true;
     screen.mixed = true;
     screen.page_2_select = false;
 
     screen.character_ROM = load_ROM(video_config.video_ROM, 8);
-    LOG_DBG("First byte = %02x.\n", screen.character_ROM[0]);
+    
+    // Compute scanlines
+    for(i = 0; i < 262; ++i) { 
+        screen.scan_line[i].chr_line = i & 0x07;
+        screen.scan_line[i].txt_scan_line = 0x28 * (i / 0x40) + 
+            ((i & 0x38) << 4);
+        screen.scan_line[i].gfx_scan_line = 
+            (screen.scan_line[i].chr_line << 10) + 
+            screen.scan_line[i].txt_scan_line;
+        LOG_DBG("Display line %d = %x, %4x, %4x\n", i,
+            screen.scan_line[i].chr_line,
+            screen.scan_line[i].txt_scan_line,
+            screen.scan_line[i].gfx_scan_line);
+
+    }
+
 }
 
 

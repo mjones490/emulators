@@ -131,6 +131,12 @@ void check_keyboard()
             last_key = translate_key(event.key.keysym.sym, 
                 event.key.keysym.mod); 
             break;
+
+        case SDL_WINDOWEVENT:
+            if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+                LOG_DBG("Window resized to %dx%d.\n", event.window.data1, 
+                    event.window.data2);
+            break;
         }
     }
 }
