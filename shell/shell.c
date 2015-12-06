@@ -175,7 +175,7 @@ bool shell_check_key()
     FD_ZERO(&fds);
     FD_SET(fileno(rl_instream), &fds);
     notime.tv_sec = 0;
-    notime.tv_usec = 1;
+    notime.tv_usec = 0;
     r = select(FD_SETSIZE, &fds, NULL, NULL, &notime);
     if (r < 0)
         return false;
@@ -194,9 +194,8 @@ void shell_loop()
     while (!all_stop) {
         if (loop_callback)
             loop_callback();
-        // if (!shell_read_key())
-           // return;       
-      
+        if (shell_check_key())
+            shell_read_key();
     }
 }
 

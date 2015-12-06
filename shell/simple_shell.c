@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "shell.h"
-#include "types.h"
+#include <shell.h>
+#include <types.h>
 
 BYTE RAM[0x4000];
 static BYTE RAM_accessor(WORD address, bool read, BYTE value)

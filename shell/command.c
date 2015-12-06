@@ -108,6 +108,7 @@ int quit(int, char **);
 int poke(int, char **);
 int peek(int, char **);
 int move(int, char **);
+int anonymous_command(int, char **);
 
 void command_initialize()
 {
@@ -116,5 +117,6 @@ void command_initialize()
     shell_add_command("peek", "Peek command.", peek, true);
     shell_add_command("poke", "Poke command.", poke, false);
     shell_add_command("move", "Move bytes.", move, false);
+    shell_set_anonymous_command_function(anonymous_command);
 }
 

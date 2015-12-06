@@ -28,9 +28,9 @@ BYTE shell_poke_byte(WORD address, BYTE value)
     return value;
 }
 
-/**********************************************************
-    Peek command
- **********************************************************/
+/**
+ * Peek command
+ */
 void dump_line(WORD *address, int len)
 {
     int i;
@@ -82,9 +82,9 @@ int peek(int argc, char **argv)
     return 0;
 }
 
-/**********************************************************
-    Poke command
- **********************************************************/
+/**
+ * Poke command
+ */
 int poke(int argc, char **argv)
 {
     static WORD address = 0;
@@ -113,6 +113,30 @@ int poke(int argc, char **argv)
             printf("Bad value: %s\n", argv[arg_num]);
             break;
         }
+    }
+
+    return 0;
+}
+
+/**
+ * Anonymous peek/poke command
+ */
+int anonymous_command(int argc, char **argv)
+{
+   int matches;
+    int value, value2;
+    char c;
+
+    matches = sscanf(argv[1], "%04x%c", &value, &c);
+    if (matches == 2 && c == ':') {
+        poke(argc, argv);
+    } else {
+        matches = sscanf(argv[1], "%04x%c%04x", &value,
+        &c, &value2);
+        if ((2 <= matches && '-' == c) || (1 == matches))
+            peek(argc, argv);
+        else
+            printf("Unknown command \"%s\".\n", argv[1]);
     }
 
     return 0;
