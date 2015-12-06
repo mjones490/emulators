@@ -11,99 +11,8 @@
 #include "ROM.h"
 #include "video.h"
 #include "keyboard.h"
+#include "cpu_iface.h"
 
-/**
- * Timing
- */
-
-Uint32 prev_time = 0;
-int remaining_clocks = 0;
-int clock_counter = 0;
-int diff_count;
-int sleep_loops = 0;
-int wake_loops = 0;
-int draw_clocks = 0;
-
-SDL_Thread *shell_key_thread;
-SDL_sem *shell_key_ready;
-
-static int shell_key_thread_function(void *data)
-{
-    while (true) {
-        if (shell_check_key())
-        //    SDL_SemPost(shell_key_ready);
-            shell_read_key();
-    }
-
-    return 0;
-}
-
-void init_shell_key_thread()
-{
-    shell_key_ready = SDL_CreateSemaphore(0);
-    shell_key_thread = SDL_CreateThread(shell_key_thread_function, 
-        "shell_key_thread_function", (void *) NULL);
-}
-
-bool has_clocks()
-{
-    Uint32 timer = SDL_GetTicks();
-    Uint32 timer_diff = timer - prev_time;
-    
-    if (timer_diff >= 17) {
-        if (++diff_count == 60) {
-//            LOG_DBG("Clocks = %d, sleep_loops = %d, wake_loops = %d  \n", 
-  //              clock_counter, sleep_loops);
-            clock_counter = 0;
-            diff_count  = 0;
-            sleep_loops = 0;
-            wake_loops = 0;
-        }
-
-        prev_time = timer;
-        remaining_clocks += timer_diff * 1004;
-        check_keyboard();
-    }
-
-    return remaining_clocks > 0;
-}
-
-static void cycle()
-{
-    BYTE clocks;
-    static bool prev_state = true; // true == halted
-    
-    if (!cpu_get_signal(SIG_HALT)) {
-        if (true == prev_state) {
-            prev_state = false;
-            prev_time = SDL_GetTicks();
-        }
-        if (has_clocks()) {
-            clocks = cpu_execute_instruction();
-            remaining_clocks -= clocks;
-            clock_counter += clocks;
-            wake_loops++;
-            video_clock(clocks);
-        } else {
-            sleep_loops++;
-        }
-    } else if (false == prev_state) {
-        shell_print("CPU halted.\n");
-        prev_state = true;
-    } else if (has_clocks()) {
-        remaining_clocks -= 2;
-        clock_counter += 2;
-        video_clock(2);
-    }
-
-/* 
-    if (0 == SDL_SemTryWait(shell_key_ready)) {
-        LOG_DBG("Have key ready...\n");
-        LOG_DBG("Done.\n");
-    }*/
-}
-
-            
 BYTE RAM_accessor(WORD address, bool read, BYTE value)
 {
     struct page_block_t *pb = get_page_block(address);
@@ -155,11 +64,6 @@ BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value)
     return value;
 }
 
-BYTE my_accessor(WORD address, bool read, BYTE value)
-{
-    return hi(address);
-}
-
 BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
 {
     static char buf[256];
@@ -174,30 +78,6 @@ BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
     }
 
     return value;
-}
-
-int anonymous_command(int argc, char **argv)
-{
-    int matches;
-    int value, value2;
-    char c;
-    command_func_t peek_function = shell_get_command_function("peek");
-    command_func_t poke_function = shell_get_command_function("poke");
-   
-    matches = sscanf(argv[1], "%04x%c", &value, &c);
-    if (matches == 2 && c == ':' && NULL != poke_function) {
-        poke_function(argc, argv);
-    } else {
-        matches = sscanf(argv[1], "%04x%c%04x", &value,
-        &c, &value2);
-        if (((2 <= matches && '-' == c) || (1 == matches)) &&
-            (NULL != peek_function))
-            peek_function(argc, argv);
-        else
-            printf("Unknown command \"%s\".\n", argv[1]);
-    }
-
-    return 0;
 }
 
 
@@ -245,16 +125,13 @@ int main(int argc, char **argv)
     init_keyboard();
 
     shell_set_accessor(bus_accessor);
-    shell_set_loop_cb(cycle);
-    shell_set_anonymous_command_function(anonymous_command);
+    shell_set_loop_cb(cpu_cycle);
     shell_initialize("MarkII");
     cpu_shell_load_commands();
     cpu_init(bus_accessor);
     cpu_set_signal(SIG_HALT);
 
-    init_shell_key_thread();
     shell_loop();
-    SDL_DetachThread(shell_key_thread);
     shell_finalize();
 
     LOG_INF("Mark II Done\n");

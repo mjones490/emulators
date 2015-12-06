@@ -51,6 +51,8 @@ static bool lock_drawing_texture()
         (void *) &screen.pixels, &screen.pitch)) {
         LOG_ERR("Texture not locked. Error: %s\n", SDL_GetError());
         ret = false;
+    } else {
+        memset(screen.pixels, 0, 192 * screen.pitch);
     }
 
     return ret;
@@ -92,7 +94,7 @@ static void init_screen(int w, int h, char *render_scale_quality,
 
     // Create drawing texture
     screen.drawing_texture = SDL_CreateTexture(screen.renderer, 
-        SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 280, 2 * 192);
+        SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 280 * 2, 192);
     
     if (screen.drawing_texture != NULL) {
         LOG_DBG("Drawing texture created.\n");
@@ -114,6 +116,7 @@ static void render_screen()
     lock_drawing_texture();
 }
 
+
 void draw_pattern(BYTE pattern, BYTE row, BYTE column)
 {
     Uint32 color = 65535;
@@ -122,13 +125,46 @@ void draw_pattern(BYTE pattern, BYTE row, BYTE column)
 
     for (i = 0; i < 7; ++i) {
         screen.pixels[pixel + i] = (pattern & 0x01)? color : 0;
-        screen.pixels[280 + pixel + i] = (pattern & 0x01)? color : 0;
         pattern >>= 1;
+    }
+}
+
+void plot(int row, int col, BYTE bitmask)
+{
+    Uint32 color = 65535;
+    int pixel = (row * 560) + (col << 1);
+
+    if (bitmask & 0x01)
+        screen.pixels[pixel] = color;
+
+    if (bitmask & 0x02)
+        screen.pixels[pixel + 1] = color;
+}
+
+static void draw_hires()
+{
+    int i;
+    BYTE *page = screen.hi_res_page[screen.page_2_select? 1 : 0];
+    BYTE pattern = *(page + screen.scan_line[screen.vsync].gfx_scan_line +
+        screen.hsync);
+    WORD pixels = 0;
+
+    for (i = 0; i < 7; ++i) {
+        pixels = ((pattern & 0x01)? 0xc000 : 0x0000) | (pixels >> 2);
+        pattern >>= 1;
+    }
+
+    pixels >>= (pattern & 0x01)? 1 : 2;
+     
+    for (i = 0; i < 8; ++i) {
+        plot(screen.vsync, (7 * screen.hsync) + i, (pixels & 0x03));
+        pixels >>= 2;
     }
 }
 
 static void draw_character()
 {
+    int i;
     BYTE *page = screen.text_page[screen.page_2_select? 1 : 0];
     BYTE character = *(page + screen.scan_line[screen.vsync].txt_scan_line + 
         screen.hsync);
@@ -138,8 +174,12 @@ static void draw_character()
     if (!screen.altchar && ((character & 0xc0) == 0x40))
         character = (character & 0x3f) | (screen.flash? 0x80 : 0x00); 
 
-    pattern = screen.character_ROM[(character << 3) + pattern_offset];
-    draw_pattern(~pattern, screen.vsync, screen.hsync);
+    pattern = ~screen.character_ROM[(character << 3) + pattern_offset];
+   
+    for (i = 0; i < 7; ++i) {
+        plot(screen.vsync, (7 * screen.hsync) + i, 3 * (pattern & 0x01));
+        pattern >>= 1;
+    }
 }
 
 static void draw_lores()
@@ -159,13 +199,6 @@ static void draw_lores()
         block = (block << 2) | (block >> 6);
         
     draw_pattern(block, screen.vsync, screen.hsync); 
-}
-
-static void draw_hires()
-{
-    BYTE *page = screen.hi_res_page[screen.page_2_select? 1 : 0];
-    draw_pattern(*(page + screen.scan_line[screen.vsync].gfx_scan_line +
-        screen.hsync), screen.vsync, screen.hsync);
 }
 
 static void select_mode()
