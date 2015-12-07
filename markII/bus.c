@@ -71,23 +71,27 @@ struct page_block_t *get_page_block(WORD address)
     return page_block[hi(address)];
 }
 
+/**
+ * Soft switches
+ */
 struct page_block_t *soft_switch_pb;
 
 struct soft_switch_t soft_switch[0x100];
 
-BYTE soft_switch_accessor(WORD address, bool read, BYTE value)
+static BYTE soft_switch_accessor(WORD address, bool read, BYTE value)
 {
     BYTE switch_no = address & 0x00FF;
   
     if (read) {
         if (NULL != soft_switch[switch_no].read_accessor)
             value = soft_switch[switch_no].read_accessor(switch_no, 
-                read, value);
+                read, value, soft_switch[switch_no].data);
         else
             LOG_DBG("Soft switch %02x not set for read.\n", switch_no);
     } else {
         if (!read && NULL != soft_switch[switch_no].write_accessor)
-            soft_switch[switch_no].write_accessor(switch_no, read, value);
+            soft_switch[switch_no].write_accessor(switch_no, 
+                read, value, soft_switch[switch_no].data);
         else
             LOG_DBG("Soft switch %02x not set for write.\n", switch_no);
     }
@@ -96,7 +100,7 @@ BYTE soft_switch_accessor(WORD address, bool read, BYTE value)
 }
 
 void install_soft_switch(BYTE switch_no, int switch_type, 
-    soft_switch_accessor_t accessor)
+    soft_switch_accessor_t accessor, void *data)
 {
     LOG_INF("Setting soft switch %02x.\n", switch_no);
 
@@ -105,6 +109,8 @@ void install_soft_switch(BYTE switch_no, int switch_type,
 
     if (switch_type & SS_WRITE)
         soft_switch[switch_no].write_accessor = accessor;
+
+    soft_switch[switch_no].data = data;
 }
 
 void init_soft_switches()

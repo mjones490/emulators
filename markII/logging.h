@@ -28,5 +28,6 @@ enum log_type {
 void print_log(enum log_type ltype, char *c_filename, const char *function, 
     int line, const char *format, ...);
 void set_log_level();
+void set_log_output_hook(void (*func)(char *));
 void init_logging();
 #endif

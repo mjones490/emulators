@@ -7,6 +7,7 @@
 #include "config.h"
 #include "logging.h"
 #include "bus.h"
+#include "cpu_iface.h"
 
 BYTE last_key;
 
@@ -110,7 +111,7 @@ static BYTE translate_key(SDL_Keycode keycode, SDL_Keymod mod)
 
 }
 
-static BYTE ss_keyboard(BYTE switch_no, bool read, BYTE value)
+static BYTE ss_keyboard(BYTE switch_no, bool read, BYTE value, void *data)
 {
     if (read && SS_KBD == switch_no)
         value = last_key;
@@ -141,14 +142,27 @@ void check_keyboard()
     }
 }
 
+static void keyboard_clock(BYTE clocks)
+{
+    static int keyboard_clocks = 0;
+
+    keyboard_clocks -= clocks;
+    if (keyboard_clocks <= 0) {
+        check_keyboard();
+        keyboard_clocks += 50304;
+    }
+}
+
 void init_keyboard()
 {
     LOG_DBG("Initilizing keyboard.\n");
 
     // Set keyboard soft switches
-    install_soft_switch(SS_KBD, SS_READ, ss_keyboard);
-    install_soft_switch(SS_KBDSTRB, SS_RDWR, ss_keyboard);
+    install_soft_switch(SS_KBD, SS_READ, ss_keyboard, NULL);
+    install_soft_switch(SS_KBDSTRB, SS_RDWR, ss_keyboard, NULL);
     
     init_key_map();
+
+    add_device(keyboard_clock);
 }
 

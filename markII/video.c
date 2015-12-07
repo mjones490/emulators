@@ -10,6 +10,7 @@
 #include <SDL2/SDL.h>
 #include "logging.h"
 #include "config.h"
+#include "cpu_iface.h"
 #include "video.h"
 #include "bus.h"
 #include "ROM.h"
@@ -260,69 +261,57 @@ const BYTE SS_TXTPAGE2      = 0x55;
 const BYTE SS_LORES         = 0x56;
 const BYTE SS_HIRES         = 0x57;
 
-BYTE ss_vbl(BYTE switch_no, bool read, BYTE value)
+BYTE ss_vbl(BYTE switch_no, bool read, BYTE value, void *data)
 {
     return screen.vbl? 0x00 : 0x80;
 }
 
-BYTE ss_page_select(BYTE switch_no, bool read, BYTE value)
+static BYTE video_switch_read(BYTE switch_no, bool read, BYTE value,
+    void *data)
 {
-    if (switch_no == SS_RDPAGE2)
-        value = screen.page_2_select? 0x80 : 0x00;
-    else if (switch_no == SS_TXTPAGE1)
-        screen.page_2_select = false;
-    else
-        screen.page_2_select = true;
+    return *((bool *) data)? 0x80 : 0x00;
 
+}
+
+static BYTE video_switch_clear(BYTE switch_no, bool read, BYTE value,
+    void *data)
+{
+    *((bool *) data) = false;
     return value;
 }
 
-BYTE ss_text_mode(BYTE switch_no, bool read, BYTE value)
+static BYTE video_switch_set(BYTE switch_no, bool read, BYTE value,
+    void *data)
 {
-    if (switch_no == SS_RDTEXT)
-        value = screen.text_mode? 0x80 : 0x00;
-    else if (switch_no == SS_TXTCLR)
-        screen.text_mode = false;
-    else
-        screen.text_mode = true;
-
+    *((bool *) data) = true;
     return value;
 }
 
-BYTE ss_mixed(BYTE switch_no, bool read, BYTE value)
+static void set_soft_switch(BYTE ss_read, BYTE ss_clear, BYTE ss_set, 
+    bool *soft_switch)
 {
-    if (switch_no == SS_RDMIXED)
-        value = screen.mixed? 0x80 : 0x00;
-    else if (switch_no == SS_MIXCLR)
-        screen.mixed = false;
-    else
-        screen.mixed = true;
-
-    return value;
+    install_soft_switch(ss_read, SS_READ, video_switch_read, soft_switch);
+    install_soft_switch(ss_clear, SS_RDWR, video_switch_clear, soft_switch);
+    install_soft_switch(ss_set, SS_RDWR, video_switch_set, soft_switch);
 }
 
-BYTE ss_hires(BYTE switch_no, bool read, BYTE value)
+static void install_video_soft_switches()
 {
-    if (switch_no == SS_RDHIRES)
-        value = screen.hires? 0x80 : 0x00;
-    else if (switch_no == SS_LORES)
-        screen.hires = false;
-    else
-        screen.hires = true;
 
-    return value;
-}
+    LOG_INF("Installing video soft switches.\n");
+    
+    install_soft_switch(SS_RDVBL, SS_READ, ss_vbl, NULL);    
+    set_soft_switch(SS_RDPAGE2, SS_TXTPAGE1, SS_TXTPAGE2, 
+        &screen.page_2_select);
+    set_soft_switch(SS_RDTEXT, SS_TXTCLR, SS_TXTSET, 
+        &screen.text_mode);
+    set_soft_switch(SS_RDMIXED, SS_MIXCLR, SS_MIXSET, 
+        &screen.mixed);
+    set_soft_switch(SS_RDHIRES, SS_LORES,SS_HIRES, 
+        &screen.hires);
+    set_soft_switch(SS_RDALTCHAR, SS_CLRALTCHAR, SS_SETALTCHAR, 
+        &screen.altchar);
 
-BYTE ss_altchar(BYTE switch_no, bool read, BYTE value)
-{
-    if (switch_no == SS_RDALTCHAR)
-        value = screen.altchar? 0x80 : 0x00;
-    else if (switch_no == SS_CLRALTCHAR)
-        screen.altchar = false;
-    else
-        screen.altchar = true;
-
-    return value;
 }
 
 /**
@@ -407,24 +396,8 @@ void init_video()
     LOG_DBG("Text page 2 address = %p.\n", screen.text_page[1]); 
     
     // Install soft switches
-    LOG_INF("Installing video soft switches.\n");
-    install_soft_switch(SS_RDVBL, SS_READ, ss_vbl);    
-    install_soft_switch(SS_RDPAGE2, SS_READ, ss_page_select);
-    install_soft_switch(SS_TXTPAGE1, SS_RDWR, ss_page_select);
-    install_soft_switch(SS_TXTPAGE2, SS_RDWR, ss_page_select);
-    install_soft_switch(SS_RDTEXT, SS_READ, ss_text_mode);
-    install_soft_switch(SS_TXTCLR, SS_RDWR, ss_text_mode);
-    install_soft_switch(SS_TXTSET, SS_RDWR, ss_text_mode);
-    install_soft_switch(SS_RDMIXED, SS_READ, ss_mixed);
-    install_soft_switch(SS_MIXCLR, SS_RDWR, ss_mixed);
-    install_soft_switch(SS_MIXSET, SS_RDWR, ss_mixed);
-    install_soft_switch(SS_RDHIRES, SS_READ, ss_hires);
-    install_soft_switch(SS_LORES, SS_RDWR, ss_hires);
-    install_soft_switch(SS_HIRES, SS_RDWR, ss_hires);
-    install_soft_switch(SS_RDALTCHAR, SS_READ, ss_altchar);
-    install_soft_switch(SS_CLRALTCHAR, SS_WRITE, ss_altchar);
-    install_soft_switch(SS_SETALTCHAR, SS_WRITE, ss_altchar);
-
+    install_video_soft_switches();
+    
     screen.text_mode = true;
     screen.mixed = true;
     screen.page_2_select = false;
@@ -439,12 +412,14 @@ void init_video()
         screen.scan_line[i].gfx_scan_line = 
             (screen.scan_line[i].chr_line << 10) + 
             screen.scan_line[i].txt_scan_line;
-        LOG_DBG("Display line %d = %x, %4x, %4x\n", i,
+    /*    LOG_DBG("Display line %d = %x, %4x, %4x\n", i,
             screen.scan_line[i].chr_line,
             screen.scan_line[i].txt_scan_line,
             screen.scan_line[i].gfx_scan_line);
-
+*/
     }
+
+    add_device(video_clock);
 
 }
 

@@ -5,6 +5,7 @@ EXE_OBJS := bus \
             init \
             keyboard \
             logging \
+            markII_commands \
             ROM \
             video
 

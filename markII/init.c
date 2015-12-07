@@ -12,6 +12,7 @@
 #include "video.h"
 #include "keyboard.h"
 #include "cpu_iface.h"
+#include "markII_commands.h"
 
 BYTE RAM_accessor(WORD address, bool read, BYTE value)
 {
@@ -50,7 +51,7 @@ static BYTE *norm_zp_buf;
 #define SS_RDALTZP      0x16
 
 
-BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value)
+BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value, void *data)
 {
     struct page_block_t *pb = get_page_block(0);
 
@@ -64,7 +65,7 @@ BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value)
     return value;
 }
 
-BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
+BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value, void *data)
 {
     static char buf[256];
     static char *buf_ptr = buf;
@@ -80,56 +81,64 @@ BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
     return value;
 }
 
+void init_RAM()
+{
+    struct page_block_t *pb;
+    
+    // Create 16k (0x40 pages) of RAM
+    pb = create_page_block(0, 0x40);
+    pb->buffer = create_page_buffer(pb->total_pages);
+    pb->accessor = RAM_accessor;
+    install_page_block(pb);
+    
+    // Create Alt zero page and stack (0x02 pages)
+    pb = create_page_block(0, 2);
+    install_page_block(pb);
+    alt_zp_buf = create_page_buffer(2);
+    norm_zp_buf = pb->buffer;
+    install_soft_switch(SS_SETSTDZP, SS_WRITE, zp_soft_switch, NULL);
+    install_soft_switch(SS_SETALTZP, SS_WRITE, zp_soft_switch, NULL);
+    install_soft_switch(SS_RDALTZP, SS_READ, zp_soft_switch, NULL);
+
+}
+
+void init_ROM()
+{
+    char *ROM_key;
+    struct page_block_t *pb;
+    
+    // create ROM
+    ROM_key = get_config_string("MARKII", "MAIN_ROM");
+    pb = create_page_block(0xc1, 0x3f);
+    pb->buffer = load_ROM(ROM_key, 0x3F);
+    pb->accessor = ROM_accessor;
+    install_page_block(pb);
+}
 
 int main(int argc, char **argv)
 {
-    char *ROM_key;
-    struct page_block_t *my_pb;
-    struct page_block_t *zpage_pb;
    
     init_logging(); 
     init_config();
     set_log_level();
        
     init_bus();
-
-    my_pb = create_page_block(0, 16);
-    my_pb->buffer = create_page_buffer(my_pb->total_pages);
-    my_pb->accessor = RAM_accessor;
-    install_page_block(my_pb);
-    
-    zpage_pb = create_page_block(0, 2);
-    install_page_block(zpage_pb);
-    alt_zp_buf = create_page_buffer(2);
-    norm_zp_buf = zpage_pb->buffer;
-    install_soft_switch(SS_SETSTDZP, SS_WRITE, zp_soft_switch);
-    install_soft_switch(SS_SETALTZP, SS_WRITE, zp_soft_switch);
-    install_soft_switch(SS_RDALTZP, SS_READ, zp_soft_switch);
-
-    install_soft_switch(0x2A, SS_WRITE, output_soft_switch);
-
-    // create ROM
-    ROM_key = get_config_string("MARKII", "MAIN_ROM");
-    my_pb = create_page_block(0xc1, 0x3f);
-    my_pb->buffer = load_ROM(ROM_key, 0x3F);
-    my_pb->accessor = ROM_accessor;
-    install_page_block(my_pb);
-
-    // create some video ram
-    my_pb = create_page_block(0x20, 0x40);
-    my_pb->buffer = create_page_buffer(my_pb->total_pages);
-    my_pb->accessor = RAM_accessor;
-    install_page_block(my_pb);
+    init_RAM();
+    init_ROM();
     init_video();
-
     init_keyboard();
+
+    install_soft_switch(0x2A, SS_WRITE, output_soft_switch, NULL);
 
     shell_set_accessor(bus_accessor);
     shell_set_loop_cb(cpu_cycle);
     shell_initialize("MarkII");
+    add_shell_commands();
+    set_log_output_hook(shell_print);
     cpu_shell_load_commands();
     cpu_init(bus_accessor);
     cpu_set_signal(SIG_HALT);
+
 
     shell_loop();
     shell_finalize();
