@@ -13,24 +13,74 @@ BYTE last_key;
 
 const BYTE SS_KBD       = 0x00;
 const BYTE SS_KBDSTRB   = 0x10;
+const BYTE SS_RDBTN0    = 0x61;
+const BYTE SS_BUTN1     = 0x62;
+
+typedef void (*key_function_t)(SDL_Keycode, SDL_Keymod, bool down);
 
 struct key_map_t {
     BYTE normal;
     BYTE shift;
     BYTE ctrl;
+    key_function_t key_function;
 };
 
-struct key_map_t key_map[256];
+struct key_map_t key_map[0x200];
+
+bool open_apple = false;
+bool solid_apple = false;
+
+void apple_key(SDL_Keycode keycode, SDL_Keymod mod, bool down)
+{
+    LOG_DBG("%s apple %s\n", (keycode == SDLK_LALT)? "Open" : "Solid", 
+        down? "down" : "up");
+
+    if (keycode == SDLK_LALT)
+        open_apple = down;
+    else
+        solid_apple = down;
+}
+
+BYTE ss_rdapples(BYTE switch_no, bool read, BYTE value, void *data)
+{
+    if (read) {
+        if (switch_no == SS_RDBTN0)
+            value = open_apple? 0x80 : 0x00;
+        else
+            value = solid_apple? 0x80: 0x00;
+    }
+
+    return value;
+}
+
+void reset_key(SDL_Keycode keycode, SDL_Keymod mod, bool down)
+{
+    if (down) {
+        LOG_DBG("Reset key pressed.\n");
+        cpu_toggle_signal(SIG_RESET);
+    }
+}
 
 static void set_key(SDL_Keycode keycode, BYTE normal, BYTE shift, BYTE ctrl)
 {
-    if (keycode >= 0x80) 
-        keycode = (keycode & 0xff) | 0x80;
+    if (keycode >= 0x100) 
+        keycode = (keycode & 0x1ff) | 0x100;
 
     key_map[keycode].normal = normal;
     key_map[keycode].shift = shift;
     key_map[keycode].ctrl = ctrl;
+    key_map[keycode].key_function = NULL;
 }
+
+
+static void set_key_function(SDL_Keycode keycode, key_function_t key_function)
+{
+    if (keycode >= 0x100) 
+        keycode = (keycode & 0x1ff) | 0x100;
+
+    key_map[keycode].key_function = key_function;
+}
+
 
 static void init_key_map()
 {
@@ -74,6 +124,10 @@ static void init_key_map()
     set_key(SDLK_BACKSPACE, 0x08,   0x08,   0x08);
     set_key(SDLK_ESCAPE,    0x1b,   0x1b,   0x1b);
     set_key(SDLK_TAB,       0x09,   0x09,   0x09);
+
+    set_key_function(SDLK_LALT, apple_key);
+    set_key_function(SDLK_RALT, apple_key);
+    set_key_function(SDLK_F12, reset_key);
 /*
     set_key(SDLK_LSHIFT,    0x80,   0x00,   0x00);
     set_key(SDLK_RSHIFT,    0x80,   0x00,   0x00);
@@ -83,17 +137,21 @@ static void init_key_map()
 */
 }
 
-static BYTE translate_key(SDL_Keycode keycode, SDL_Keymod mod)
+static BYTE translate_key(SDL_Keycode keycode, SDL_Keymod mod, bool down)
 {
     BYTE key;
     struct key_map_t map;
+    SDL_Keycode idx = keycode;
     
-    if (keycode >= 0x80)
-       keycode = (keycode & 0xff) | 0x80;
+    if (idx >= 0x100)
+       idx = (idx & 0x1ff) | 0x100;
 
-     map = key_map[keycode];
+    map = key_map[idx];
     
-    if ((map.normal + map.shift + map.ctrl) == 0)
+    if (NULL != map.key_function) {
+        map.key_function(keycode, mod, down);
+        return 0;    
+    } else if (!down || (map.normal + map.shift + map.ctrl) == 0)
         return 0;
     else if (mod & KMOD_SHIFT)
         key = map.shift;
@@ -128,9 +186,11 @@ void check_keyboard()
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
         case SDL_KEYDOWN:
-            LOG_DBG("Detected key %02x!\n", event.key.keysym.sym);
+        case SDL_KEYUP:
+            if (SDL_KEYDOWN == event.type)
+                LOG_DBG("Detected key %02x!\n", event.key.keysym.sym);
             last_key = translate_key(event.key.keysym.sym, 
-                event.key.keysym.mod); 
+                event.key.keysym.mod, SDL_KEYDOWN == event.type); 
             break;
 
         case SDL_WINDOWEVENT:
@@ -160,6 +220,8 @@ void init_keyboard()
     // Set keyboard soft switches
     install_soft_switch(SS_KBD, SS_READ, ss_keyboard, NULL);
     install_soft_switch(SS_KBDSTRB, SS_RDWR, ss_keyboard, NULL);
+    install_soft_switch(SS_RDBTN0, SS_READ, ss_rdapples, NULL);
+    install_soft_switch(SS_BUTN1, SS_READ, ss_rdapples, NULL);
     
     init_key_map();
 

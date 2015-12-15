@@ -185,21 +185,24 @@ static void draw_character()
 
 static void draw_lores()
 {
+    int i;
     BYTE *page = screen.text_page[screen.page_2_select? 1 : 0];
-    BYTE block = *(page + screen.scan_line[screen.vsync].txt_scan_line + 
+    BYTE pattern = *(page + screen.scan_line[screen.vsync].txt_scan_line + 
         screen.hsync);
-    
+   
     if (!(screen.vsync & 0x04))
-        block &= 0x0f;
+        pattern &= 0x0f;
     else
-        block >>= 4;
+        pattern >>= 4;
 
-    block |= (block << 4);
-
+    pattern |= (pattern << 4);
     if (!(screen.hsync & 0x01))
-        block = (block << 2) | (block >> 6);
-        
-    draw_pattern(block, screen.vsync, screen.hsync); 
+        pattern = (pattern << 1) | (pattern >> 7);
+
+    for (i =0; i < 7; ++i) {
+        plot(screen.vsync, (7 * screen.hsync) + i, pattern & 0x03);
+        pattern = (pattern << 6) | (pattern >> 2);
+    }
 }
 
 static void select_mode()

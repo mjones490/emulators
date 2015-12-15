@@ -10,6 +10,7 @@
 #include "bus.h"
 #include "ROM.h"
 #include "video.h"
+#include "sound.h"
 #include "keyboard.h"
 #include "cpu_iface.h"
 #include "markII_commands.h"
@@ -126,6 +127,7 @@ int main(int argc, char **argv)
     init_RAM();
     init_ROM();
     init_video();
+    init_sound();
     init_keyboard();
 
     install_soft_switch(0x2A, SS_WRITE, output_soft_switch, NULL);
@@ -135,11 +137,9 @@ int main(int argc, char **argv)
     shell_initialize("MarkII");
     add_shell_commands();
     set_log_output_hook(shell_print);
-    cpu_shell_load_commands();
-    cpu_init(bus_accessor);
-    cpu_set_signal(SIG_HALT);
-
-
+    
+    init_cpu();
+    
     shell_loop();
     shell_finalize();
 

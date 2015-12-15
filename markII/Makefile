@@ -7,6 +7,7 @@ EXE_OBJS := bus \
             logging \
             markII_commands \
             ROM \
+            sound \
             video
 
 EXE_LIBS := 6502 \
@@ -14,7 +15,9 @@ EXE_LIBS := 6502 \
             Stuff \
             shell \
             readline \
-            SDL2
+            SDL2 \
+            SDL2_mixer \
+            m
 
 INC_DIR = ../include \
           Stuff \
@@ -22,7 +25,7 @@ INC_DIR = ../include \
 
 LIB_DIR = ../lib . 
 
-CFLAGS = -Wall -g -MMD -MP -D_REENTRANT  $(INC_DIR:%=-I%)
+CFLAGS = -Wall -g -O0 -MMD -MP -D_REENTRANT  $(INC_DIR:%=-I%)
 LFLAGS = -Wall $(LIB_DIR:%=-L%)
 
 CP = cp -v
@@ -30,10 +33,12 @@ CP = cp -v
 EXE_OBJS := $(EXE_OBJS:%=%.o)
 EXE_LIBS := $(EXE_LIBS:%=-l%)
 
+
 all : build_libs $(EXE)
 
 build_libs :
-	cd ../shell && $(MAKE)
+	$(MAKE) -C ../shell
+
    
 .SECONDARY :
  
