@@ -13,7 +13,6 @@
  * Timing
  */
 
-SDL_sem *clock_sem;
 
 Uint32 prev_time = 0;
 int remaining_clocks = 0;
@@ -26,18 +25,12 @@ void add_device(void (*device_clock_hook)(BYTE))
     device_clock[num_devices++] = device_clock_hook;
 }
 
-void add_clocks()
-{
-    SDL_SemPost(clock_sem);
-}
-
 static bool has_clocks()
 {
     Uint32 timer = SDL_GetTicks();
     Uint32 timer_diff = timer - prev_time;
    
-    if (timer_diff >= 5) {
-        //SDL_SemWait(clock_sem);
+    if (remaining_clocks <= 0 && timer_diff >= 1) {
         prev_time = timer;
         remaining_clocks = timer_diff * 1023;
     }
@@ -77,6 +70,9 @@ void init_cpu()
     cpu_init(bus_accessor);
     cpu_set_signal(SIG_HALT);
 
-    clock_sem = SDL_CreateSemaphore(0);
+    if (get_config_bool("MARKII", "AUTO_START")) {
+        cpu_set_signal(SIG_RESET);
+        cpu_clear_signal(SIG_HALT);
+    }
 }
             

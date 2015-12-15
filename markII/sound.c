@@ -100,3 +100,8 @@ void init_sound()
     Mix_HookMusic(sound_hook, NULL);
 }
 
+void finalize_sound()
+{
+    Mix_CloseAudio();
+}
+

@@ -12,5 +12,6 @@ bool get_config_bool(char *section_name, char *key_name);
 Uint32 string_to_hex(char *string);
 int string_to_int(char *string);
 char *split_string(char *string, char *buffer, char splitter);
+void finalize_config();
 
 #endif

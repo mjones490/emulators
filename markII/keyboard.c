@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <malloc.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>

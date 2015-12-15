@@ -37,15 +37,40 @@ struct page_block_t *create_page_block(BYTE first_page, int total_pages)
     return pb;
 }
 
+struct buffer_list_t {
+    BYTE *buffer;
+    struct buffer_list_t *next;
+};
+
+struct buffer_list_t *buffer_list = NULL;
+
 BYTE *create_page_buffer(int total_pages)
 {
-    BYTE *buffer;
+    struct buffer_list_t *new_list;
     LOG_INF("Allocating %04x byte buffer.\n", total_pages * PAGE_SIZE);
-    buffer = malloc(total_pages * PAGE_SIZE);
-    memset(buffer, 0, total_pages * PAGE_SIZE);
-    return buffer;
+
+    new_list = malloc(sizeof(struct buffer_list_t));
+    new_list->buffer = malloc(total_pages * PAGE_SIZE);
+    LOG_DBG("Buffer allocated at %p\n", new_list->buffer);
+    memset(new_list->buffer, 0, total_pages * PAGE_SIZE);
+    new_list->next = buffer_list;
+    buffer_list = new_list;
+    return new_list->buffer;
 }
-           
+
+void free_page_buffers()
+{   
+    struct buffer_list_t *old_list;
+    LOG_INF("Freeing buffers..\n");
+    while (buffer_list) {
+        LOG_DBG("Freeing buffer at %p\n", buffer_list->buffer);
+        free(buffer_list->buffer);
+        old_list = buffer_list;
+        buffer_list = old_list->next;
+        free(old_list);
+    }
+}
+
 bool install_page_block(struct page_block_t *pb)
 {
     int i;

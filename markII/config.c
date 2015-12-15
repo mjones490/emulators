@@ -103,3 +103,10 @@ void init_config()
         LOG_INF("%s\n", message);
     }
 }
+
+void finalize_config()
+{
+    LOG_INF("Closing config.\n");
+    config_close(config);
+}
+

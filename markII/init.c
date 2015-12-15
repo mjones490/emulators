@@ -116,9 +116,8 @@ void init_ROM()
     install_page_block(pb);
 }
 
-int main(int argc, char **argv)
+void init_all()
 {
-   
     init_logging(); 
     init_config();
     set_log_level();
@@ -129,6 +128,12 @@ int main(int argc, char **argv)
     init_video();
     init_sound();
     init_keyboard();
+
+}
+
+int main(int argc, char **argv)
+{
+    init_all();
 
     install_soft_switch(0x2A, SS_WRITE, output_soft_switch, NULL);
 
@@ -143,6 +148,10 @@ int main(int argc, char **argv)
     shell_loop();
     shell_finalize();
 
+    finalize_sound();
+    finalize_video();
+    free_page_buffers();
+    finalize_config();
     LOG_INF("Mark II Done\n");
     return 0;
 }

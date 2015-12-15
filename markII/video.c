@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <malloc.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "logging.h"
@@ -107,6 +106,17 @@ static void init_screen(int w, int h, char *render_scale_quality,
 
     screen.vsync = 0;
     screen.hsync = 0;
+}
+
+void finalize_video()
+{
+    LOG_INF("Finalizing video...\n");
+
+    unlock_drawing_texture();
+    SDL_DestroyTexture(screen.drawing_texture);
+    SDL_DestroyRenderer(screen.renderer);
+    SDL_DestroyWindow(screen.window);
+    SDL_Quit();
 }
 
 static void render_screen()
@@ -425,5 +435,7 @@ void init_video()
     add_device(video_clock);
 
 }
+
+
 
 

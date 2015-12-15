@@ -5,5 +5,6 @@
 
 void init_video();
 void video_clock(BYTE clocks);
+void finalize_video();
 
 #endif

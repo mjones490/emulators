@@ -27,6 +27,7 @@ struct soft_switch_t
 BYTE bus_accessor(WORD address, bool read, BYTE value);
 struct page_block_t *create_page_block(BYTE first_page, int total_pages);
 BYTE *create_page_buffer(int total_pages);
+void free_page_buffers();
 bool install_page_block(struct page_block_t *pb);
 void init_bus();
 void install_soft_switch(BYTE switch_no, int switch_type, 
