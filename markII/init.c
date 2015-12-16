@@ -13,6 +13,7 @@
 #include "sound.h"
 #include "keyboard.h"
 #include "cpu_iface.h"
+#include "disk.h"
 #include "markII_commands.h"
 
 BYTE RAM_accessor(WORD address, bool read, BYTE value)
@@ -87,7 +88,7 @@ void init_RAM()
     struct page_block_t *pb;
     
     // Create 16k (0x40 pages) of RAM
-    pb = create_page_block(0, 0x40);
+    pb = create_page_block(0, 0xBF);
     pb->buffer = create_page_buffer(pb->total_pages);
     pb->accessor = RAM_accessor;
     install_page_block(pb);
@@ -128,7 +129,12 @@ void init_all()
     init_video();
     init_sound();
     init_keyboard();
+    init_disk();
+}
 
+BYTE ss_trace(BYTE switch_no, bool read, BYTE value, void *data)
+{
+    return value;
 }
 
 int main(int argc, char **argv)
@@ -136,6 +142,7 @@ int main(int argc, char **argv)
     init_all();
 
     install_soft_switch(0x2A, SS_WRITE, output_soft_switch, NULL);
+    install_soft_switch(0x4B, SS_RDWR, ss_trace, NULL);
 
     shell_set_accessor(bus_accessor);
     shell_set_loop_cb(cpu_cycle);

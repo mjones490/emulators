@@ -2,6 +2,8 @@ EXE := markII
 EXE_OBJS := bus \
             config \
             cpu_iface \
+            disk \
+            disk_iface \
             init \
             keyboard \
             logging \

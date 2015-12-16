@@ -208,7 +208,7 @@ static void keyboard_clock(BYTE clocks)
     keyboard_clocks -= clocks;
     if (keyboard_clocks <= 0) {
         check_keyboard();
-        keyboard_clocks += 50304;
+        keyboard_clocks += 17030;
     }
 }
 
