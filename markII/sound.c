@@ -94,7 +94,7 @@ void init_sound()
     }
 
 
-    install_soft_switch(0x30, SS_READ, speaker_toggle, NULL);
+    install_soft_switch(0x30, SS_RDWR, speaker_toggle, NULL);
     add_device(speaker_clock);
 
     Mix_HookMusic(sound_hook, NULL);

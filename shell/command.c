@@ -25,7 +25,7 @@ command_func_t shell_add_command(char *name, char *description,
     cmd->name = malloc(strlen(name) + 1);
     strcpy(cmd->name, name);
 
-    cmd->description = malloc(strlen(description));
+    cmd->description = malloc(strlen(description) + 1);
     strcpy(cmd->description, description);
 
     cmd->function = function;

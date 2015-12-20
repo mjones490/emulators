@@ -5,5 +5,6 @@
 void cpu_cycle();
 void add_device(void (*device_clock_hook)(BYTE));
 void init_cpu();
+void finalize_cpu();
 
 #endif

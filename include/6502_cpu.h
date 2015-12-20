@@ -19,6 +19,7 @@ WORD cpu_get_prev_PC();
 enum NMONIC cpu_get_nmonic(BYTE code);
 enum ADDRESS_MODE cpu_get_address_mode(BYTE code);
 int cpu_get_instruction_size(BYTE code);
+BYTE cpu_get_clocks();
 BYTE cpu_execute_instruction();
 void cpu_init(accessor_t bus);
 void cpu_set_signal(BYTE signal);

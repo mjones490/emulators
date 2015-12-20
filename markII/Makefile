@@ -4,6 +4,7 @@ EXE_OBJS := bus \
             cpu_iface \
             disk \
             disk_iface \
+            dos33 \
             init \
             keyboard \
             logging \
@@ -40,14 +41,15 @@ all : build_libs $(EXE)
 
 build_libs :
 	$(MAKE) -C ../shell
-
+	$(MAKE) -C ../6502_cpu
    
 .SECONDARY :
  
 clean :
 	rm -vf $(EXE_OBJS) $(LIB_OBJS) $(EXE) $(LIB) *.d
 	rm -vf $(SHELL_LIB_OBJS) $(SHELL_LIB)
-	cd ../shell && $(MAKE) clean
+	$(MAKE) -C ../shell clean
+	$(MAKE) -C ../6502_cpu clean
 
 $(EXE) : $(EXE_OBJS) $(LIB) ../lib/libshell.a
 	$(CC) $(LFLAGS) $(EXE_OBJS) $(EXE_LIBS) -o $(EXE)

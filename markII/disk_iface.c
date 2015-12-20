@@ -137,12 +137,8 @@ BYTE drive_latches(BYTE port, bool read, BYTE value, void *data)
 {
     switch (port) {
     case STROBE_DATA_LATCH:
-        if (drive->read_mode) {
-            value = drive->rw_latch;
-            drive->rw_latch &= 0x7F;
-        } else {
-            drive->data_latch = drive->rw_latch;
-        }
+        drive->strobe = true;
+        value = drive->rw_latch;
         break;
 
     case INPUT_LATCH:
@@ -153,6 +149,7 @@ BYTE drive_latches(BYTE port, bool read, BYTE value, void *data)
 
     case OUTPUT_LATCH:
         drive->read_mode = false;
+        drive->rw_latch = value;
         LOG_INF("Prepared for output.\n");
         return 0;
 
@@ -171,6 +168,8 @@ const int max_spin_down_clocks = 5000;
 
 void spin_drive(struct drive_t *drive, BYTE cpu_clocks)
 {
+    static bool read_mode = true;
+
     if (drive->motor_on) 
         drive->spin_down_clocks = 1024 * max_spin_down_clocks;
 
@@ -178,11 +177,7 @@ void spin_drive(struct drive_t *drive, BYTE cpu_clocks)
         drive->clocks += cpu_clocks;
         drive->spin_down_clocks -= cpu_clocks;
         while (drive->clocks >= 4) {
-            if (drive->read_mode) {
-                if (drive->data_latch & 0x80) {
-                    drive->rw_latch = drive->data_latch;
-                    drive->data_latch = 0;
-                }
+            if (read_mode) {
                 drive->data_latch = (drive->data_latch << 1) |
                     read_bit(drive);
             } else {
@@ -191,8 +186,22 @@ void spin_drive(struct drive_t *drive, BYTE cpu_clocks)
             }
             drive->clocks -= 4;
         }
-        
-    if (drive->spin_down_clocks <= 10)
+ 
+        read_mode = drive->read_mode;       
+        if (drive->strobe) {
+            if (read_mode) 
+                drive->rw_latch &= 0x7f;
+            else
+                drive->data_latch = drive->rw_latch;
+            drive->strobe = false;
+        }
+                
+        if (read_mode && (drive->data_latch & 0x80)) {
+            drive->rw_latch = drive->data_latch;
+            drive->data_latch = 0;
+        }
+
+        if (drive->spin_down_clocks <= 10)
             LOG_INF("Drive %d spun down\n", drive->drive_no);        
     }
 }
@@ -256,7 +265,20 @@ void init_disk()
     add_device(drive_clock);
 }
 
-struct drive_t *get_drive()
+void finalize_disk()
 {
+    unload_disk(&ddrive[0]);
+    unload_disk(&ddrive[1]);
+}
+
+struct drive_t *get_drive(int drive_no)
+{
+    struct drive_t *drive = NULL;
+    
+    if (drive_no < 0 || drive_no > 1)
+        LOG_ERR("Bad drive number %d\n", drive_no);
+    else
+        drive = &ddrive[drive_no];
+         
     return drive;
 }

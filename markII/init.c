@@ -88,7 +88,7 @@ void init_RAM()
     struct page_block_t *pb;
     
     // Create 16k (0x40 pages) of RAM
-    pb = create_page_block(0, 0xBF);
+    pb = create_page_block(0, 0xc0);
     pb->buffer = create_page_buffer(pb->total_pages);
     pb->accessor = RAM_accessor;
     install_page_block(pb);
@@ -117,6 +117,11 @@ void init_ROM()
     install_page_block(pb);
 }
 
+BYTE ss_trace(BYTE switch_no, bool read, BYTE value, void *data)
+{
+    return value;
+}
+
 void init_all()
 {
     init_logging(); 
@@ -130,16 +135,6 @@ void init_all()
     init_sound();
     init_keyboard();
     init_disk();
-}
-
-BYTE ss_trace(BYTE switch_no, bool read, BYTE value, void *data)
-{
-    return value;
-}
-
-int main(int argc, char **argv)
-{
-    init_all();
 
     install_soft_switch(0x2A, SS_WRITE, output_soft_switch, NULL);
     install_soft_switch(0x4B, SS_RDWR, ss_trace, NULL);
@@ -152,13 +147,29 @@ int main(int argc, char **argv)
     
     init_cpu();
     
-    shell_loop();
-    shell_finalize();
+}
 
+void finalize_all()
+{
+    shell_finalize();
     finalize_sound();
     finalize_video();
+    finalize_disk();
+    finalize_cpu();
     free_page_buffers();
     finalize_config();
+}
+
+int main(int argc, char **argv)
+{
+    while (true) {
+        init_all();
+        shell_loop();
+        finalize_all();
+        if (!is_rebooting())
+            break;
+    }
+
     LOG_INF("Mark II Done\n");
     return 0;
 }

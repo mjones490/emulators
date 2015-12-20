@@ -43,12 +43,17 @@ struct drive_t {
     DWORD           clocks;         ///< CPU clocks
     BYTE            data_latch;     ///< Data latch
     BYTE            rw_latch;       ///< Read/write latch
+    bool            strobe;
     DWORD           spin_down_clocks; ///< Spin-down clocks
     bool            verbose;        ///< Logging verbosity
     int             drive_no;       ///< This drive number
 };
 
 void init_disk();
+void finalize_disk();
+struct drive_t *get_drive(int drive_no);
+void init_drive(int drive_no);
+
 void init_steppers(struct drive_t* drive);
 
 void set_phase(struct drive_t *drive, int phase_switch);
@@ -60,5 +65,4 @@ BYTE write_bit(struct drive_t *drive, BYTE bit);
 BYTE read_bit(struct drive_t *drive);
 void load_half_track(struct drive_t *drive);
 
-struct drive_t *get_drive();
 #endif

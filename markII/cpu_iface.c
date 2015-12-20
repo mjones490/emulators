@@ -56,7 +56,7 @@ void cpu_cycle()
         if (!cpu_get_signal(SIG_HALT))
             clocks = cpu_execute_instruction();
         else
-            clocks = 2;
+            clocks = 0;
 
         use_clocks(clocks);
     } else
@@ -64,15 +64,31 @@ void cpu_cycle()
 
 }
 
+int (*old_step)(int argc, char **argv);
+
+int step(int argc, char **argv)
+{
+    old_step(argc, argv);
+    use_clocks(cpu_get_clocks());
+    return 0;
+}
+
 void init_cpu()
 {
     cpu_shell_load_commands();
+    old_step = shell_add_command("step", "Overridden step command", 
+        step, true);
     cpu_init(bus_accessor);
     cpu_set_signal(SIG_HALT);
 
     if (get_config_bool("MARKII", "AUTO_START")) {
         cpu_set_signal(SIG_RESET);
         cpu_clear_signal(SIG_HALT);
-    }
+    }   
+}
+
+void finalize_cpu()
+{
+    num_devices = 0;
 }
             

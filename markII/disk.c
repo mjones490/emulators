@@ -273,10 +273,14 @@ void create_disk(struct drive_t *drive, int tracks, size_t track_size,
 }
 
 void unload_disk(struct drive_t *drive)
-{ 
-    if (drive->verbose)
-        LOG_INF("Unloading disk...\n");
-    munmap(drive->map, drive->map_size);
-    close(drive->fd);
-    drive->map = NULL;
+{
+    if (drive->map != NULL) { 
+        if (drive->verbose)
+            LOG_INF("Unloading disk...\n");
+        munmap(drive->map, drive->map_size);
+        close(drive->fd);
+        drive->map = NULL;
+    } else {
+        LOG_INF("No disk to unload.\n");
+    }
 }

@@ -4,9 +4,9 @@
 // Types
 #include <stdbool.h>
 
-typedef unsigned short WORD;
-typedef unsigned char BYTE;
-
+typedef unsigned short  WORD;
+typedef unsigned char   BYTE;
+typedef unsigned int    DWORD;
 // Bus access
 typedef BYTE (*accessor_t)(WORD address, bool read, BYTE value);
 

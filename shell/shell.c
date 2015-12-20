@@ -136,6 +136,7 @@ static void line_handler(char *line)
             add_history(line);
         }
 
+        rl_replace_line("", true);
         do_command(argc, argv);
 
         if (0 != argv) {
@@ -206,6 +207,7 @@ void shell_initialize(char *prompt)
     command_initialize();
     rl_callback_handler_install(full_prompt, line_handler);
     rl_attempted_completion_function = command_completer;
+    all_stop = false;
 }
 
 void shell_finalize()

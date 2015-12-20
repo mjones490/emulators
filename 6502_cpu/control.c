@@ -11,6 +11,11 @@ struct regs_t regs;
 
 struct running_t running;
 
+BYTE cpu_get_clocks()
+{
+    return running.clocks;
+}
+
 BYTE exec_instruction(BYTE code)
 {    
     running.instruction = &instruction[code];
