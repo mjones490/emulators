@@ -91,7 +91,8 @@ void calibrate_rw_head(struct drive_t* drive)
         move_rw_head(drive, false);
 }
 
-void mount_disk(char *file_name, char *map_filename, BYTE sector_order[])
+void mount_disk(char *file_name, int drive_no, BYTE sector_order[],
+    bool write_protected)
 {
     BYTE buf[256];
     int i;
@@ -100,17 +101,24 @@ void mount_disk(char *file_name, char *map_filename, BYTE sector_order[])
     size_t count;
     BYTE physical_place;
     struct drive_t drive;
+    struct map_header_t *header;
+    char map_filename[32];
 
     memset(buf, 0, 256);
     //6395
-    unload_disk(get_drive(0));
+    drive.empty = true;
+    unload_disk(get_drive(drive_no - 1));
 
     init_steppers(&drive);
 
+    drive.verbose = true;
+    sprintf(map_filename, "disk%d.map", drive_no);
     create_disk(&drive, 35, 6500, map_filename);
-    drive.verbose = false;
 
     load_disk(&drive, map_filename);
+    header = (struct map_header_t *) drive.map->header;
+    strncpy(header->filename, file_name, 255);
+    header->write_protected = write_protected;
     format_disk(&drive, 254);
     
     fd = open(file_name, O_RDONLY, NULL);
@@ -147,17 +155,62 @@ void mount_disk(char *file_name, char *map_filename, BYTE sector_order[])
 
     unload_disk(&drive);
 
-    init_drive(0);
-    load_disk(get_drive(0), map_filename);
+    init_drive(drive_no - 1);
+    load_disk(get_drive(drive_no - 1), map_filename);
 }
 
+void unmount_disk(char *file_name, char *map_filename, BYTE sector_order[])
+{
+    BYTE buf[256];
+    int fd;
+    int i;
+    int j;
+    BYTE physical_place;
+    struct drive_t drive; 
+    struct drive_t *mounted = get_drive(0);
+    struct map_header_t *header = (struct map_header_t *) mounted->map->header;
+    
+    memset(buf, 0, 256);
+    
+    if (file_name == 0)
+        file_name = header->filename;
+
+    LOG_INF("Unmounting disk %s...\n", file_name);
+    unload_disk(get_drive(0));
+    
+    init_steppers(&drive);
+    load_disk(&drive, map_filename);
+
+    fd = creat(file_name, S_IRUSR | S_IWUSR);
+    if (fd == -1) {
+        printf("Error creating dsk.\n");
+        return;
+    }
+
+    calibrate_rw_head(&drive);
+    for (i = 0; i < 35; ++i) {
+        move_rw_head(&drive, true);
+
+        for (j = 0; j < 16; ++j) {
+            physical_place = sector_order[j] & 0x0F;
+            seek_sector(&drive, physical_place);
+            read_sector(&drive, buf);
+            write(fd, buf, 256);
+        }
+
+        move_rw_head(&drive, true);
+    }
+
+    close(fd);
+    unload_disk(&drive);
+}
 char *mnt_file;
 char *unmnt_file;
 bool show_help;
 bool run_test_main;
 int drive_no;
 char *sector_order;
-
+bool write_protected;
 #define omitted  "`" 
 
 struct parameter_struct param[] = {
@@ -165,6 +218,8 @@ struct parameter_struct param[] = {
     PARAM("help", 'h', 'b', &show_help, FALSE, "Show this help and exit")
     PARAM("order", 'o', 'c', &sector_order, "D", 
         "Sector order - D = DOS 3.3, P = ProDOS")
+    PARAM("write-protected", 'w', 'b', &write_protected, FALSE, 
+        "Disk is write protected.")
 };
 
 int mount_command(int argc, char **argv)
@@ -185,13 +240,22 @@ int mount_command(int argc, char **argv)
 
     mnt_file = get_next_argument(param_parse);
 
-    if (mnt_file == 0)
-        LOG_ERR("Must specifiy a file name.\n");
-    else {
-        LOG_INF("Mounting disk file %s in %s order (%c)...\n", mnt_file,
-            *sector_order == 'D'? "DOS 3.3" :  "ProDOS", *sector_order);
-        mount_disk(mnt_file, map_filename[drive_no - 1], 
+    if (0 == strcmp("mount",argv[0])) {
+        if (mnt_file == 0) {
+            LOG_ERR("Must specifiy a file name.\n");
+        } else {
+            LOG_INF("Mounting disk file %s in %s order (%c), "
+                " %swrite protected...\n", mnt_file,
+                *sector_order == 'D'? "DOS 3.3" :  "ProDOS", *sector_order,
+                write_protected? "" : "not ");
+            mount_disk(mnt_file, drive_no, 
+                *sector_order == 'D'? dos33_order : prodos_order, 
+                write_protected);
+        }
+    } else {
+        unmount_disk(mnt_file, map_filename[drive_no - 1], 
             *sector_order == 'D'? dos33_order : prodos_order);
+ 
     }
     
    
@@ -208,10 +272,24 @@ int mount_command(int argc, char **argv)
 
     return 0;
 }
+
+int mounted_command(int argc, char **argv)
+{
+    struct drive_t *drive = get_drive(0);
+    struct map_header_t *header = (struct map_header_t *) drive->map->header;
+
+    printf("Disk 0: File = %s, %swrite protected\n", header->filename,
+        header->write_protected? "" : "not ");
+    return 0;
+}
+
 void init_mount_command()
 {
     init_denibble();
     shell_add_command("mount", "Mount disk.", mount_command, false);
+    shell_add_command("unmount", "Unmount disk.", mount_command, false);
+    shell_add_command("mounted", "List mounted disks.", 
+        mounted_command, false);
 }
 
 /**

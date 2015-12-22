@@ -135,6 +135,7 @@ int shifts;
 
 BYTE drive_latches(BYTE port, bool read, BYTE value, void *data)
 {
+    struct map_header_t *header;
     switch (port) {
     case STROBE_DATA_LATCH:
         drive->strobe = true;
@@ -154,10 +155,12 @@ BYTE drive_latches(BYTE port, bool read, BYTE value, void *data)
         return 0;
 
     case LOAD_DATA_LATCH:
-        if (drive->read_mode)
-            drive->rw_latch = 0;
-        else
+        if (drive->read_mode) {
+            header = (struct map_header_t *) drive->map->header;
+            drive->rw_latch = header->write_protected? 0x80 : 0x00;
+        } else {
             drive->rw_latch = value;
+        }
         break;
     } 
 

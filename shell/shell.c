@@ -30,7 +30,11 @@ static char *next_arg(char *string, char *buffer)
     }
 
     while (*string) {
-        if (is_quoted) {
+        if ('\\' == *string) {
+            ++string;
+            buffer = append_char(buffer, *(string++));
+            continue;
+        } else if (is_quoted) {
             if ('\"' == *string) {
                 buffer = append_char(buffer, *(string++));
                 break;

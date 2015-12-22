@@ -128,6 +128,9 @@ void init_steppers(struct drive_t* drive)
  */
 void load_half_track(struct drive_t* drive)
 {
+    if (drive->empty)
+        return;
+
     while (drive->write_clock != 0)
         read_bit(drive);
     drive->cur_track = drive->map->data + ((drive->half_track_no >> 1) *
@@ -152,6 +155,9 @@ void load_half_track(struct drive_t* drive)
 BYTE read_bit(struct drive_t* drive)
 {
     BYTE bit = drive->rw_head.byte.hi & 0x01;
+
+    if (drive->empty)
+        return 0;
 
     // Store hi byte
     if (0x0007 == (drive->bit_no & 0x0007) && drive->write_clock != 0)
@@ -178,6 +184,9 @@ BYTE read_bit(struct drive_t* drive)
  */
 BYTE write_bit(struct drive_t* drive, BYTE bit)
 {
+    if (drive->empty)
+        return 0;
+
     drive->rw_head.byte.hi = (drive->rw_head.byte.hi & 0xFE) | (bit & 0x01);
     drive->write_clock |= 0x01;
     return read_bit(drive); 
@@ -209,11 +218,15 @@ void map_disk(struct drive_t* drive)
     
     drive->map_size = sb.st_size;
     drive->track_cnt = 35;
-    drive->track_size = drive->map_size / drive->track_cnt;
+    drive->track_size = ((size_t)(drive->map_size) - map_header_size) / 
+        drive->track_cnt;
     if (drive->verbose)
         LOG_INF("Track size = %d\n", drive->track_size);
             drive->track_cnt = 70;
     drive->half_track_no = 0;
+    drive->empty = false;
+    drive->bit_no = 0;
+    drive->write_clock = 0;
     load_half_track(drive); 
 }
 
@@ -231,11 +244,13 @@ void load_disk(struct drive_t *drive, char *map_filename)
     
     drive->fd = open(map_filename, O_RDWR, S_IRUSR);
     if (drive->fd == -1) {
+        drive->empty = true;
         LOG_ERR("Err.\n");
         return;
     }
 
     map_disk(drive);
+    drive->empty = false;
 }
 
 /**
@@ -250,8 +265,10 @@ void create_disk(struct drive_t *drive, int tracks, size_t track_size,
     char *map_filename)
 {
     BYTE *data;
-    size_t total_size = tracks * track_size;
+    size_t total_size = (tracks * track_size) + map_header_size;
     ssize_t size_written;
+
+    drive->empty = true;
 
     drive->fd = creat(map_filename, S_IRUSR | S_IWUSR);
     if (drive->fd == -1) {
@@ -269,11 +286,14 @@ void create_disk(struct drive_t *drive, int tracks, size_t track_size,
 
     free(data);
     close(drive->fd);
+
+    drive->bit_no = 0; 
     load_disk(drive, map_filename);
 }
 
 void unload_disk(struct drive_t *drive)
 {
+    drive->empty = true;
     if (drive->map != NULL) { 
         if (drive->verbose)
             LOG_INF("Unloading disk...\n");

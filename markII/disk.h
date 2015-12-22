@@ -12,7 +12,17 @@ struct stepper {
     struct stepper* right;  //< Stepper to right
 };
 
+#define map_header_size 512
+
+struct map_header_t {
+    char filename[256];
+    BYTE sector_order;
+    bool write_protected;
+    bool modified;
+};
+
 struct map_t {
+    BYTE header[512];
     BYTE data[0];
 };
 
@@ -47,6 +57,7 @@ struct drive_t {
     DWORD           spin_down_clocks; ///< Spin-down clocks
     bool            verbose;        ///< Logging verbosity
     int             drive_no;       ///< This drive number
+    bool            empty;
 };
 
 void init_disk();
