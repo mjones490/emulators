@@ -199,7 +199,8 @@ BYTE write_bit(struct drive_t* drive, BYTE bit)
 void map_disk(struct drive_t* drive)
 {
     struct stat sb;
-  
+    struct map_header_t *header;
+    
     if (drive->verbose)
         LOG_INF("Mapping disk...\n");
      
@@ -215,7 +216,7 @@ void map_disk(struct drive_t* drive)
         LOG_ERR("Err: %d\n", errno);
         return;
     }
-    
+   
     drive->map_size = sb.st_size;
     drive->track_cnt = 35;
     drive->track_size = ((size_t)(drive->map_size) - map_header_size) / 
@@ -224,9 +225,10 @@ void map_disk(struct drive_t* drive)
         LOG_INF("Track size = %d\n", drive->track_size);
             drive->track_cnt = 70;
     drive->half_track_no = 0;
-    drive->empty = false;
     drive->bit_no = 0;
     drive->write_clock = 0;
+    
+    drive->empty = false;
     load_half_track(drive); 
 }
 
@@ -238,7 +240,7 @@ void map_disk(struct drive_t* drive)
  */ 
 void load_disk(struct drive_t *drive, char *map_filename)
 {
-
+    struct map_header_t *header;
     if (drive->verbose)
         LOG_INF("Loading disk map file %s.\n", map_filename);
     
@@ -249,8 +251,10 @@ void load_disk(struct drive_t *drive, char *map_filename)
         return;
     }
 
-    map_disk(drive);
     drive->empty = false;
+    map_disk(drive);
+    header = (struct map_header_t *) drive->map->header;
+    drive->empty = !header->valid;
 }
 
 /**
@@ -268,6 +272,7 @@ void create_disk(struct drive_t *drive, int tracks, size_t track_size,
     size_t total_size = (tracks * track_size) + map_header_size;
     ssize_t size_written;
 
+    LOG_INF("Creating disk map %s...\n", map_filename);
     drive->empty = true;
 
     drive->fd = creat(map_filename, S_IRUSR | S_IWUSR);

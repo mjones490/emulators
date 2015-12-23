@@ -18,7 +18,8 @@ struct map_header_t {
     char filename[256];
     BYTE sector_order;
     bool write_protected;
-    bool modified;
+    bool valid;
+    unsigned int hash;
 };
 
 struct map_t {

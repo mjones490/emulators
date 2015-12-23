@@ -26,7 +26,7 @@ INC_DIR = ../include \
           Stuff \
           /usr/include/SDL2
 
-LIB_DIR = ../lib . 
+LIB_DIR = Stuff ../lib . 
 
 CFLAGS = -Wall -g -O0 -MMD -MP -D_REENTRANT  $(INC_DIR:%=-I%)
 LFLAGS = -Wall $(LIB_DIR:%=-L%)

@@ -101,13 +101,15 @@ void mount_disk(char *file_name, int drive_no, BYTE sector_order[],
     size_t count;
     BYTE physical_place;
     struct drive_t drive;
+    struct drive_t *dest_drive;
     struct map_header_t *header;
     char map_filename[32];
 
     memset(buf, 0, 256);
     //6395
     drive.empty = true;
-    unload_disk(get_drive(drive_no - 1));
+    dest_drive = get_drive(drive_no - 1);
+    unload_disk(dest_drive);
 
     init_steppers(&drive);
 
@@ -115,48 +117,56 @@ void mount_disk(char *file_name, int drive_no, BYTE sector_order[],
     sprintf(map_filename, "disk%d.map", drive_no);
     create_disk(&drive, 35, 6500, map_filename);
 
-    load_disk(&drive, map_filename);
+    //load_disk(&drive, map_filename);
     header = (struct map_header_t *) drive.map->header;
     strncpy(header->filename, file_name, 255);
     header->write_protected = write_protected;
+    header->valid = true;
+    drive.empty = false;
+
     format_disk(&drive, 254);
     
     fd = open(file_name, O_RDONLY, NULL);
     if (fd == -1) {
         LOG_ERR("Error opening dsk.\n");
-        return;
-    }
+        header->valid = false;
+    } else {
+        LOG_INF("Writting map...\n");
+        calibrate_rw_head(&drive);
 
-    calibrate_rw_head(&drive);
+        for(i = 0; i < 35; ++i) {
+            move_rw_head(&drive, true);
 
-    for(i = 0; i < 35; ++i) {
-        move_rw_head(&drive, true);
+            for (j = 0; j < 16; ++j) {
+                physical_place = sector_order[j] & 0x0F; //>> 4;
 
-        for (j = 0; j < 16; ++j) {
-            physical_place = sector_order[j] & 0x0F; //>> 4;
+                count = read(fd, buf, 256);
+                if (count < 256) {
+                    LOG_ERR("Error reading dsk.\n");
+                    return;
+                }
+           
+                //dump_buffer(buf, 256);
+                seek_sector(&drive, physical_place & 0x0F);
+                write_sector(&drive, buf);
+                write_sync_bytes(&drive, 5);
+            }      
 
-            count = read(fd, buf, 256);
-            if (count < 256) {
-                LOG_ERR("Error reading dsk.\n");
-                return;
-            }
-            //dump_buffer(buf, 256);
-            seek_sector(&drive, physical_place & 0x0F);
-            write_sector(&drive, buf);
-            write_sync_bytes(&drive, 5);
+            for (j = 0; j < 8; ++j)
+                read_byte(&drive);
+            move_rw_head(&drive, true);
         }
 
-        for (j = 0; j < 8; ++j)
-            read_byte(&drive);
-        move_rw_head(&drive, true);
+        close(fd);
+
+        header->valid = true;
+        header->hash = hash_fnv1a_32((char *) drive.map->data, 
+            (int) drive.map_size);
     }
 
-    close(fd);
-
     unload_disk(&drive);
-
     init_drive(drive_no - 1);
-    load_disk(get_drive(drive_no - 1), map_filename);
+    load_disk(dest_drive, map_filename);
 }
 
 void unmount_disk(char *file_name, char *map_filename, BYTE sector_order[])
@@ -169,15 +179,24 @@ void unmount_disk(char *file_name, char *map_filename, BYTE sector_order[])
     struct drive_t drive; 
     struct drive_t *mounted = get_drive(0);
     struct map_header_t *header = (struct map_header_t *) mounted->map->header;
+    bool modified;
     
     memset(buf, 0, 256);
     
     if (file_name == 0)
         file_name = header->filename;
 
+    modified = (hash_fnv1a_32((char *) mounted->map->data,  
+        (int) mounted->map_size) != header->hash);
+
     LOG_INF("Unmounting disk %s...\n", file_name);
     unload_disk(get_drive(0));
     
+    if (!modified) {
+        LOG_INF("Not modified.\n");
+        return;
+    }
+
     init_steppers(&drive);
     load_disk(&drive, map_filename);
 
@@ -275,11 +294,26 @@ int mount_command(int argc, char **argv)
 
 int mounted_command(int argc, char **argv)
 {
-    struct drive_t *drive = get_drive(0);
-    struct map_header_t *header = (struct map_header_t *) drive->map->header;
+    struct drive_t *drive;
+    struct map_header_t *header;
+    unsigned int hash;
+    int i;
 
-    printf("Disk 0: File = %s, %swrite protected\n", header->filename,
-        header->write_protected? "" : "not ");
+    for (i = 0; i < 2; ++i) {
+        drive = get_drive(i);
+        if (drive->empty) {
+            printf("Drive %d: Not mounted.\n", i + 1);
+            continue;
+        }
+    
+        header = (struct map_header_t *) drive->map->header;
+        printf("Drive %d: File = %s, %swrite protected\n", i + 1, 
+            header->filename, header->write_protected? "" : "not ");
+        hash = hash_fnv1a_32((char *) drive->map->data, (int) drive->map_size);
+        printf("Map size = %d, hash = \%x, header hash = %x\n", 
+            drive->map_size, hash, header->hash);
+    }
+
     return 0;
 }
 
