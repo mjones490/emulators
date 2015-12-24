@@ -110,13 +110,13 @@ static BYTE soft_switch_accessor(WORD address, bool read, BYTE value)
     if (read) {
         if (NULL != soft_switch[switch_no].read_accessor)
             value = soft_switch[switch_no].read_accessor(switch_no, 
-                read, value, soft_switch[switch_no].data);
+                read, value);
         else
             LOG_DBG("Soft switch %02x not set for read.\n", switch_no);
     } else {
         if (!read && NULL != soft_switch[switch_no].write_accessor)
             soft_switch[switch_no].write_accessor(switch_no, 
-                read, value, soft_switch[switch_no].data);
+                read, value);
         else
             LOG_DBG("Soft switch %02x not set for write.\n", switch_no);
     }
@@ -124,8 +124,18 @@ static BYTE soft_switch_accessor(WORD address, bool read, BYTE value)
     return value;
 }
 
+void set_soft_switch_data(BYTE switch_no, void *data)
+{
+    soft_switch[switch_no].data = data;
+}
+
+void *get_soft_switch_data(BYTE switch_no)
+{
+    return soft_switch[switch_no].data;
+}
+
 void install_soft_switch(BYTE switch_no, int switch_type, 
-    soft_switch_accessor_t accessor, void *data)
+    soft_switch_accessor_t accessor)
 {
     LOG_INF("Setting soft switch %02x.\n", switch_no);
 
@@ -135,7 +145,7 @@ void install_soft_switch(BYTE switch_no, int switch_type,
     if (switch_type & SS_WRITE)
         soft_switch[switch_no].write_accessor = accessor;
 
-    soft_switch[switch_no].data = data;
+    soft_switch[switch_no].data = NULL;
 }
 
 void init_soft_switches()

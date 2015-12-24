@@ -91,7 +91,7 @@ void calibrate_rw_head(struct drive_t* drive)
         move_rw_head(drive, false);
 }
 
-void mount_disk(char *file_name, int drive_no, BYTE sector_order[],
+void mount_disk(char *file_name, int drive_no, int order,
     bool write_protected)
 {
     BYTE buf[256];
@@ -104,6 +104,7 @@ void mount_disk(char *file_name, int drive_no, BYTE sector_order[],
     struct drive_t *dest_drive;
     struct map_header_t *header;
     char map_filename[32];
+    BYTE *sector_order = (order == 1)? prodos_order : dos33_order;
 
     memset(buf, 0, 256);
     //6395
@@ -169,9 +170,10 @@ void mount_disk(char *file_name, int drive_no, BYTE sector_order[],
     load_disk(dest_drive, map_filename);
 }
 
-void unmount_disk(char *file_name, char *map_filename, BYTE sector_order[])
+void unmount_disk(char *file_name, int drive_no, BYTE sector_order[])
 {
     BYTE buf[256];
+    char map_filename[32];
     int fd;
     int i;
     int j;
@@ -180,18 +182,28 @@ void unmount_disk(char *file_name, char *map_filename, BYTE sector_order[])
     struct drive_t *mounted = get_drive(0);
     struct map_header_t *header = (struct map_header_t *) mounted->map->header;
     bool modified;
+    bool write_protected;
     
     memset(buf, 0, 256);
-    
+   
+    sprintf(map_filename, "disk%d.map", drive_no);
+
     if (file_name == 0)
         file_name = header->filename;
 
-    modified = (hash_fnv1a_32((char *) mounted->map->data,  
-        (int) mounted->map_size) != header->hash);
+    write_protected = header->write_protected;
+    if (!write_protected)
+        modified = (hash_fnv1a_32((char *) mounted->map->data,  
+            (int) mounted->map_size) != header->hash);
 
     LOG_INF("Unmounting disk %s...\n", file_name);
-    unload_disk(get_drive(0));
-    
+    unload_disk(get_drive(drive_no - 1));
+   
+    if (write_protected) {
+        LOG_INF("Write protected.\n");
+        return;
+    }
+         
     if (!modified) {
         LOG_INF("Not modified.\n");
         return;
@@ -268,11 +280,11 @@ int mount_command(int argc, char **argv)
                 *sector_order == 'D'? "DOS 3.3" :  "ProDOS", *sector_order,
                 write_protected? "" : "not ");
             mount_disk(mnt_file, drive_no, 
-                *sector_order == 'D'? dos33_order : prodos_order, 
+                *sector_order == 'D'? 0 : 1, 
                 write_protected);
         }
     } else {
-        unmount_disk(mnt_file, map_filename[drive_no - 1], 
+        unmount_disk(mnt_file, drive_no, 
             *sector_order == 'D'? dos33_order : prodos_order);
  
     }

@@ -32,7 +32,7 @@ void sound_hook(void *udata, Uint8 *stream, int len)
     }
 }
 
-BYTE speaker_toggle(BYTE port, bool read, BYTE value, void *data)
+BYTE speaker_toggle(BYTE port, bool read, BYTE value)
 {
     speaker_state = !speaker_state;
     return value;
@@ -94,7 +94,7 @@ void init_sound()
     }
 
 
-    install_soft_switch(0x30, SS_RDWR, speaker_toggle, NULL);
+    install_soft_switch(0x30, SS_RDWR, speaker_toggle);
     add_device(speaker_clock);
 
     Mix_HookMusic(sound_hook, NULL);

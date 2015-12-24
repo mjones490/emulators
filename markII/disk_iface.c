@@ -22,7 +22,7 @@ const BYTE SETSLOTCXROM = 0x06;
 const BYTE SETINTCXROM  = 0x07;
 const BYTE RDCXROM = 0x15;
 
-BYTE CXROM_switch(BYTE switch_no, bool read, BYTE value, void *data)
+BYTE CXROM_switch(BYTE switch_no, bool read, BYTE value)
 {
     struct page_block_t *pb = get_page_block(0xC600);
     if (switch_no == SETSLOTCXROM)
@@ -45,9 +45,9 @@ void init_slot_ROM()
     install_page_block(pb);
     int_ROM = pb->buffer;
     
-    install_soft_switch(SETSLOTCXROM, SS_WRITE, CXROM_switch, NULL);             
-    install_soft_switch(SETINTCXROM, SS_WRITE, CXROM_switch, NULL);             
-    install_soft_switch(RDCXROM, SS_READ, CXROM_switch, NULL);             
+    install_soft_switch(SETSLOTCXROM, SS_WRITE, CXROM_switch);             
+    install_soft_switch(SETINTCXROM, SS_WRITE, CXROM_switch);             
+    install_soft_switch(RDCXROM, SS_READ, CXROM_switch);             
 }
 
 
@@ -97,7 +97,7 @@ struct drive_t ddrive[2];
 #define INPUT_LATCH         0xEE
 #define OUTPUT_LATCH        0xEF
 
-BYTE drive_motor(BYTE port, bool read, BYTE value, void *data)
+BYTE drive_motor(BYTE port, bool read, BYTE value)
 {
     if (port == 0xE8)
         drive->motor_on = false;
@@ -111,7 +111,7 @@ BYTE drive_motor(BYTE port, bool read, BYTE value, void *data)
     return 0;
 }
 
-BYTE drive_select(BYTE port, bool read, BYTE value, void *data)
+BYTE drive_select(BYTE port, bool read, BYTE value)
 {
     int drive_no = port & 0x01;
     LOG_INF("Select drive %d.\n", drive_no);
@@ -122,7 +122,7 @@ BYTE drive_select(BYTE port, bool read, BYTE value, void *data)
     return 0;
 }
 
-BYTE phase_switch(BYTE port, bool read, BYTE value, void *data)
+BYTE phase_switch(BYTE port, bool read, BYTE value)
 {
     set_phase(drive, port & 0x07);
     return 0;
@@ -133,7 +133,7 @@ BYTE port_data = 0;
 int read_clocks;
 int shifts;
 
-BYTE drive_latches(BYTE port, bool read, BYTE value, void *data)
+BYTE drive_latches(BYTE port, bool read, BYTE value)
 {
     struct map_header_t *header;
     switch (port) {
@@ -230,7 +230,7 @@ void init_drive(int drive_no)
 void set_port(BYTE switch_no, soft_switch_accessor_t accessor,
     soft_switch_accessor_t dummy)
 {
-    install_soft_switch(switch_no, SS_RDWR, accessor, NULL);
+    install_soft_switch(switch_no, SS_RDWR, accessor);
 }
 
 void init_disk()

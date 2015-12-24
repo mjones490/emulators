@@ -53,7 +53,7 @@ static BYTE *norm_zp_buf;
 #define SS_RDALTZP      0x16
 
 
-BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value, void *data)
+BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value)
 {
     struct page_block_t *pb = get_page_block(0);
 
@@ -67,7 +67,7 @@ BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value, void *data)
     return value;
 }
 
-BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value, void *data)
+BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
 {
     static char buf[256];
     static char *buf_ptr = buf;
@@ -98,9 +98,9 @@ void init_RAM()
     install_page_block(pb);
     alt_zp_buf = create_page_buffer(2);
     norm_zp_buf = pb->buffer;
-    install_soft_switch(SS_SETSTDZP, SS_WRITE, zp_soft_switch, NULL);
-    install_soft_switch(SS_SETALTZP, SS_WRITE, zp_soft_switch, NULL);
-    install_soft_switch(SS_RDALTZP, SS_READ, zp_soft_switch, NULL);
+    install_soft_switch(SS_SETSTDZP, SS_WRITE, zp_soft_switch);
+    install_soft_switch(SS_SETALTZP, SS_WRITE, zp_soft_switch);
+    install_soft_switch(SS_RDALTZP, SS_READ, zp_soft_switch);
 
 }
 
@@ -117,7 +117,7 @@ void init_ROM()
     install_page_block(pb);
 }
 
-BYTE ss_trace(BYTE switch_no, bool read, BYTE value, void *data)
+BYTE ss_trace(BYTE switch_no, bool read, BYTE value)
 {
     return value;
 }
@@ -136,8 +136,8 @@ void init_all()
     init_keyboard();
     init_disk();
 
-    install_soft_switch(0x2A, SS_WRITE, output_soft_switch, NULL);
-    install_soft_switch(0x4B, SS_RDWR, ss_trace, NULL);
+    install_soft_switch(0x2A, SS_WRITE, output_soft_switch);
+    install_soft_switch(0x4B, SS_RDWR, ss_trace);
 
     shell_set_accessor(bus_accessor);
     shell_set_loop_cb(cpu_cycle);

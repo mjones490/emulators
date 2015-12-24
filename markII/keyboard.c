@@ -40,7 +40,7 @@ void apple_key(SDL_Keycode keycode, SDL_Keymod mod, bool down)
         solid_apple = down;
 }
 
-BYTE ss_rdapples(BYTE switch_no, bool read, BYTE value, void *data)
+BYTE ss_rdapples(BYTE switch_no, bool read, BYTE value)
 {
     if (read) {
         if (switch_no == SS_RDBTN0)
@@ -168,7 +168,7 @@ static BYTE translate_key(SDL_Keycode keycode, SDL_Keymod mod, bool down)
 
 }
 
-static BYTE ss_keyboard(BYTE switch_no, bool read, BYTE value, void *data)
+static BYTE ss_keyboard(BYTE switch_no, bool read, BYTE value)
 {
     if (read && SS_KBD == switch_no)
         value = last_key;
@@ -217,10 +217,10 @@ void init_keyboard()
     LOG_DBG("Initilizing keyboard.\n");
 
     // Set keyboard soft switches
-    install_soft_switch(SS_KBD, SS_READ, ss_keyboard, NULL);
-    install_soft_switch(SS_KBDSTRB, SS_RDWR, ss_keyboard, NULL);
-    install_soft_switch(SS_RDBTN0, SS_READ, ss_rdapples, NULL);
-    install_soft_switch(SS_BUTN1, SS_READ, ss_rdapples, NULL);
+    install_soft_switch(SS_KBD, SS_READ, ss_keyboard);
+    install_soft_switch(SS_KBDSTRB, SS_RDWR, ss_keyboard);
+    install_soft_switch(SS_RDBTN0, SS_READ, ss_rdapples);
+    install_soft_switch(SS_BUTN1, SS_READ, ss_rdapples);
     
     init_key_map();
 

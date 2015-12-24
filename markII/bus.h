@@ -10,8 +10,7 @@ struct page_block_t {
     BYTE *buffer;
 };
 
-typedef BYTE (*soft_switch_accessor_t)(BYTE switch_no, bool read, 
-    BYTE value, void *data);
+typedef BYTE (*soft_switch_accessor_t)(BYTE switch_no, bool read, BYTE value);
 
 struct soft_switch_t
 {
@@ -30,8 +29,10 @@ BYTE *create_page_buffer(int total_pages);
 void free_page_buffers();
 bool install_page_block(struct page_block_t *pb);
 void init_bus();
+void set_soft_switch_data(BYTE soft_switch_no, void *data);
+void *get_soft_switch_data(BYTE soft_switch_no);
 void install_soft_switch(BYTE switch_no, int switch_type, 
-    soft_switch_accessor_t accessor, void *data);
+    soft_switch_accessor_t accessor);
 struct page_block_t *get_page_block(WORD address);
 
   

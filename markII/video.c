@@ -274,28 +274,28 @@ const BYTE SS_TXTPAGE2      = 0x55;
 const BYTE SS_LORES         = 0x56;
 const BYTE SS_HIRES         = 0x57;
 
-BYTE ss_vbl(BYTE switch_no, bool read, BYTE value, void *data)
+BYTE ss_vbl(BYTE switch_no, bool read, BYTE value)
 {
     return screen.vbl? 0x00 : 0x80;
 }
 
-static BYTE video_switch_read(BYTE switch_no, bool read, BYTE value,
-    void *data)
+static BYTE video_switch_read(BYTE switch_no, bool read, BYTE value)
 {
+    void *data = get_soft_switch_data(switch_no);
     return *((bool *) data)? 0x80 : 0x00;
 
 }
 
-static BYTE video_switch_clear(BYTE switch_no, bool read, BYTE value,
-    void *data)
+static BYTE video_switch_clear(BYTE switch_no, bool read, BYTE value)
 {
+    void *data = get_soft_switch_data(switch_no);
     *((bool *) data) = false;
     return value;
 }
 
-static BYTE video_switch_set(BYTE switch_no, bool read, BYTE value,
-    void *data)
+static BYTE video_switch_set(BYTE switch_no, bool read, BYTE value)
 {
+    void *data = get_soft_switch_data(switch_no);
     *((bool *) data) = true;
     return value;
 }
@@ -303,9 +303,13 @@ static BYTE video_switch_set(BYTE switch_no, bool read, BYTE value,
 static void set_soft_switch(BYTE ss_read, BYTE ss_clear, BYTE ss_set, 
     bool *soft_switch)
 {
-    install_soft_switch(ss_read, SS_READ, video_switch_read, soft_switch);
-    install_soft_switch(ss_clear, SS_RDWR, video_switch_clear, soft_switch);
-    install_soft_switch(ss_set, SS_RDWR, video_switch_set, soft_switch);
+    install_soft_switch(ss_read, SS_READ, video_switch_read);
+    install_soft_switch(ss_clear, SS_RDWR, video_switch_clear);
+    install_soft_switch(ss_set, SS_RDWR, video_switch_set);
+
+    set_soft_switch_data(ss_read, soft_switch);
+    set_soft_switch_data(ss_clear, soft_switch);
+    set_soft_switch_data(ss_set, soft_switch);
 }
 
 static void install_video_soft_switches()
@@ -313,7 +317,7 @@ static void install_video_soft_switches()
 
     LOG_INF("Installing video soft switches.\n");
     
-    install_soft_switch(SS_RDVBL, SS_READ, ss_vbl, NULL);    
+    install_soft_switch(SS_RDVBL, SS_READ, ss_vbl);    
     set_soft_switch(SS_RDPAGE2, SS_TXTPAGE1, SS_TXTPAGE2, 
         &screen.page_2_select);
     set_soft_switch(SS_RDTEXT, SS_TXTCLR, SS_TXTSET, 
