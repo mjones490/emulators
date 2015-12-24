@@ -7,7 +7,6 @@
 #include "config.h"
 #include "logging.h"
 #include "bus.h"
-#include "ROM.h"
 
 /**
  * Timing
@@ -53,9 +52,14 @@ void cpu_cycle()
     BYTE clocks;
     
     if (has_clocks()) {
-        if (!cpu_get_signal(SIG_HALT))
+        if (!cpu_get_signal(SIG_HALT)) {
+            if (cpu_get_signal(SIG_RESET)){
+                LOG_INF("RESET signal received.\n");
+                bus_accessor(0xc082, read, 0);
+            }
+
             clocks = cpu_execute_instruction();
-        else
+        } else
             clocks = 0;
 
         use_clocks(clocks);

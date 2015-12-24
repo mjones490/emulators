@@ -12,7 +12,7 @@
 #include "config.h"
 #include "bus.h"
 #include "cpu_iface.h"
-#include "ROM.h"
+#include "mmu.h"
 
 // Temporary slot-ROM stuff
 BYTE *boot_ROM;

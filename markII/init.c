@@ -8,7 +8,7 @@
 #include "config.h"
 #include "logging.h"
 #include "bus.h"
-#include "ROM.h"
+#include "mmu.h"
 #include "video.h"
 #include "sound.h"
 #include "keyboard.h"
@@ -16,58 +16,12 @@
 #include "disk.h"
 #include "markII_commands.h"
 
-BYTE RAM_accessor(WORD address, bool read, BYTE value)
+BYTE ss_trace(BYTE switch_no, bool read, BYTE value)
 {
-    struct page_block_t *pb = get_page_block(address);
-   
-    if (NULL != pb->buffer) {
-        if (read)
-            value = pb->buffer[pb_offset(pb, address)];
-        else
-            pb->buffer[pb_offset(pb, address)] = value;
-    } else {
-        value = 0;
-    }
-
     return value;
 }
 
-BYTE ROM_accessor(WORD address, bool read, BYTE value)
-{
-    struct page_block_t *pb = get_page_block(address);
-   
-    if (NULL != pb->buffer) {
-        value = pb->buffer[pb_offset(pb, address)];
-    } else {
-        value = 0;
-    }
-
-    return value;
-}
-
-static BYTE *alt_zp_buf;
-static BYTE *norm_zp_buf;
-
-#define SS_SETSTDZP     0x08
-#define SS_SETALTZP     0x09
-#define SS_RDALTZP      0x16
-
-
-BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value)
-{
-    struct page_block_t *pb = get_page_block(0);
-
-    if (SS_SETSTDZP == switch_no)
-        pb->buffer = norm_zp_buf;
-    else if(SS_SETALTZP == switch_no)
-        pb->buffer = alt_zp_buf;
-    else if (SS_RDALTZP == switch_no)
-        value = (pb->buffer == alt_zp_buf)? 0x80 : 0x00;
-
-    return value;
-}
-
-BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
+static BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
 {
     static char buf[256];
     static char *buf_ptr = buf;
@@ -83,45 +37,6 @@ BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
     return value;
 }
 
-void init_RAM()
-{
-    struct page_block_t *pb;
-    
-    // Create 16k (0x40 pages) of RAM
-    pb = create_page_block(0, 0xc0);
-    pb->buffer = create_page_buffer(pb->total_pages);
-    pb->accessor = RAM_accessor;
-    install_page_block(pb);
-    
-    // Create Alt zero page and stack (0x02 pages)
-    pb = create_page_block(0, 2);
-    install_page_block(pb);
-    alt_zp_buf = create_page_buffer(2);
-    norm_zp_buf = pb->buffer;
-    install_soft_switch(SS_SETSTDZP, SS_WRITE, zp_soft_switch);
-    install_soft_switch(SS_SETALTZP, SS_WRITE, zp_soft_switch);
-    install_soft_switch(SS_RDALTZP, SS_READ, zp_soft_switch);
-
-}
-
-void init_ROM()
-{
-    char *ROM_key;
-    struct page_block_t *pb;
-    
-    // create ROM
-    ROM_key = get_config_string("MARKII", "MAIN_ROM");
-    pb = create_page_block(0xc1, 0x3f);
-    pb->buffer = load_ROM(ROM_key, 0x3F);
-    pb->accessor = ROM_accessor;
-    install_page_block(pb);
-}
-
-BYTE ss_trace(BYTE switch_no, bool read, BYTE value)
-{
-    return value;
-}
-
 void init_all()
 {
     init_logging(); 
@@ -129,8 +44,7 @@ void init_all()
     set_log_level();
        
     init_bus();
-    init_RAM();
-    init_ROM();
+    init_mmu();
     init_video();
     init_sound();
     init_keyboard();

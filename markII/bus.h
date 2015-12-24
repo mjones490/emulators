@@ -8,6 +8,7 @@ struct page_block_t {
     BYTE first_page;
     int total_pages;
     BYTE *buffer;
+    void *data;
 };
 
 typedef BYTE (*soft_switch_accessor_t)(BYTE switch_no, bool read, BYTE value);

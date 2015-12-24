@@ -9,7 +9,7 @@ EXE_OBJS := bus \
             keyboard \
             logging \
             markII_commands \
-            ROM \
+            mmu \
             sound \
             video
 

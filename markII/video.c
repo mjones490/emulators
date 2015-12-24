@@ -12,7 +12,7 @@
 #include "cpu_iface.h"
 #include "video.h"
 #include "bus.h"
-#include "ROM.h"
+#include "mmu.h"
 
 struct scan_line_t {
     WORD gfx_scan_line;

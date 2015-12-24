@@ -12,7 +12,6 @@
 #include <Stuff.h>
 #include "logging.h"
 #include "bus.h"
-#include "ROM.h"
 #include "cpu_iface.h"
 #include "disk.h"
 #include "dos33.h"

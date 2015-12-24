@@ -134,3 +134,151 @@ BYTE *load_ROM(char *ROM_name, BYTE requested_pages)
 
     return buffer;
 }
+
+static BYTE RAM_accessor(WORD address, bool read, BYTE value)
+{
+    struct page_block_t *pb = get_page_block(address);
+   
+    if (NULL != pb->buffer) {
+        if (read)
+            value = pb->buffer[pb_offset(pb, address)];
+        else
+            pb->buffer[pb_offset(pb, address)] = value;
+    } else {
+        value = 0;
+    }
+
+    return value;
+}
+
+static BYTE ROM_accessor(WORD address, bool read, BYTE value)
+{
+    struct page_block_t *pb = get_page_block(address);
+   
+    if (NULL != pb->buffer) {
+        value = pb->buffer[pb_offset(pb, address)];
+    } else {
+        value = 0;
+    }
+
+    return value;
+}
+
+static BYTE *alt_zp_buf;
+static BYTE *norm_zp_buf;
+
+#define SS_SETSTDZP     0x08
+#define SS_SETALTZP     0x09
+#define SS_RDALTZP      0x16
+
+
+static BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value)
+{
+    struct page_block_t *pb = get_page_block(0);
+
+    if (SS_SETSTDZP == switch_no)
+        pb->buffer = norm_zp_buf;
+    else if(SS_SETALTZP == switch_no)
+        pb->buffer = alt_zp_buf;
+    else if (SS_RDALTZP == switch_no)
+        value = (pb->buffer == alt_zp_buf)? 0x80 : 0x00;
+
+    return value;
+}
+
+static void init_RAM()
+{
+    struct page_block_t *pb;
+    
+    // Create 16k (0x40 pages) of RAM
+    pb = create_page_block(0, 0xc0);
+    pb->buffer = create_page_buffer(pb->total_pages);
+    pb->accessor = RAM_accessor;
+    install_page_block(pb);
+    
+    // Create Alt zero page and stack (0x02 pages)
+    pb = create_page_block(0, 2);
+    install_page_block(pb);
+    alt_zp_buf = create_page_buffer(2);
+    norm_zp_buf = pb->buffer;
+    install_soft_switch(SS_SETSTDZP, SS_WRITE, zp_soft_switch);
+    install_soft_switch(SS_SETALTZP, SS_WRITE, zp_soft_switch);
+    install_soft_switch(SS_RDALTZP, SS_READ, zp_soft_switch);
+
+}
+
+static void init_ROM()
+{
+    char *ROM_key;
+    struct page_block_t *pb;
+    
+    // create ROM
+    ROM_key = get_config_string("MARKII", "MAIN_ROM");
+    pb = create_page_block(0xc1, 0x3f);
+    pb->buffer = load_ROM(ROM_key, 0x3F);
+    pb->accessor = ROM_accessor;
+    install_page_block(pb);
+}
+
+static bool read_enabled = false;
+static bool write_enabled = false;
+
+static BYTE *D000_buffer[2];
+
+BYTE bank_switch_accessor(WORD address, bool read, BYTE value)
+{
+    struct page_block_t *pb = get_page_block(address);
+    BYTE *RAM_buffer = (BYTE *) pb->data;
+            
+    if (read) {
+        if (read_enabled)
+            value = RAM_buffer[pb_offset(pb, address)];
+        else
+            value = pb->buffer[pb_offset(pb, address)];
+    } else {
+        if (write_enabled)
+            RAM_buffer[pb_offset(pb, address)] = value;
+    }
+
+    return value;
+}
+
+BYTE bank_switch_soft_switch(BYTE switch_no, bool read, BYTE value)
+{
+    struct page_block_t *pb = get_page_block(0xd000);
+
+    write_enabled = switch_no & 0x01;
+    read_enabled = ((switch_no & 0x03) == 0x03) || 
+        ((switch_no & 0x03) == 0x00);
+
+    pb->data = D000_buffer[(switch_no & 0x08)? 0 : 1];
+    return value;
+}
+
+void init_bank_switch_memory()
+{
+    int i;
+    struct page_block_t *pb;
+
+    pb = create_page_block(0xd0, 0x10);
+    pb->accessor = bank_switch_accessor;
+    install_page_block(pb);
+    D000_buffer[0] = create_page_buffer(0x10);
+    D000_buffer[1] = create_page_buffer(0x10);
+    pb->data = D000_buffer[1];
+    
+    pb = create_page_block(0xe0, 0x20);
+    pb->accessor = bank_switch_accessor;
+    install_page_block(pb);
+    pb->data = create_page_buffer(0x20);
+
+    for (i = 0x80; i <= 0x8f; ++i)
+        install_soft_switch(i, SS_RDWR, bank_switch_soft_switch);    
+}
+
+void init_mmu()
+{
+    init_RAM();
+    init_ROM();
+    init_bank_switch_memory();
+}
