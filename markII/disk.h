@@ -1,3 +1,7 @@
+/**
+ * @file disk.h
+ * @brief Code to emulate Disk ][ hardware
+ */
 #ifndef __DISK_H
 #define __DISK_H
 
@@ -7,9 +11,9 @@
  * Stepper phase magnet
  */
 struct stepper {
-    bool state;             //< State of this phase 
-    struct stepper* left;   //< Stepper to left 
-    struct stepper* right;  //< Stepper to right
+    bool state;             ///< State of this phase 
+    struct stepper* left;   ///< Stepper to left 
+    struct stepper* right;  ///< Stepper to right
 };
 
 #define map_header_size 512

@@ -1,3 +1,9 @@
+/**
+ * @file mmu.c
+ * @brief Memory Management Unit.  Handles loading of ROM files, standard RAM and
+ * ROM accesses, bank switching, and auxilary memory.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +18,9 @@
 #include "config.h"
 
 #define PAGES(p) word(0x00, (p))
+/****************************************
+ * ROM file routines
+ */
 
 /**
  * Structure used to hold parts of a ROM entry specified in the configuarion
@@ -48,6 +57,7 @@ static struct ROM_descripter_t *parse_ROM(char *ROM_set)
         rd->next = malloc(sizeof(struct ROM_descripter_t));
         rd = rd->next;
         memset(rd, 0, sizeof(struct ROM_descripter_t));
+        LOG_DBG("Allocated ROM address = %p\n", rd);
 
         // Get ROM filename
         tmp = split_string(tmp, tmp2, ':');
@@ -64,15 +74,22 @@ static struct ROM_descripter_t *parse_ROM(char *ROM_set)
 
 /**
  * Deallocates list of ROM_descripter_t.
- * @param[in] First item in list
+ * @param[in] rd First item in list
  */
 static void free_ROM(struct ROM_descripter_t *rd)
 {
     struct ROM_descripter_t *tmp;
-    for (tmp = rd; NULL != tmp; tmp = tmp->next)
+    for (tmp = rd; NULL != tmp; tmp = tmp->next) {
+        LOG_DBG("Freeing ROM address = %p\n", tmp);
         free(tmp);
+    }
 }
 
+/**
+ * Load a ROM buffer from setups described in .cfg file.
+ * @param[in] ROM_name Name of ROM configurateion
+ * @param[in] requested_pages Number of requested pages
+ */
 BYTE *load_ROM(char *ROM_name, BYTE requested_pages)
 {
     struct ROM_descripter_t *rd;
@@ -135,6 +152,17 @@ BYTE *load_ROM(char *ROM_name, BYTE requested_pages)
     return buffer;
 }
 
+/****************************
+ * Standard RAM
+ */
+
+/**
+ * Handles standard RAM access.
+ * @param[in] address Address of byte to access
+ * @param[in] read Read RAM when true
+ * @param[in] value Value to write
+ * @returns Value read
+ */
 static BYTE RAM_accessor(WORD address, bool read, BYTE value)
 {
     struct page_block_t *pb = get_page_block(address);
@@ -151,6 +179,32 @@ static BYTE RAM_accessor(WORD address, bool read, BYTE value)
     return value;
 }
 
+/**
+ * Initialize standard RAM.
+ */
+static void init_RAM()
+{
+    struct page_block_t *pb;
+    
+    // Create 16k (0x40 pages) of RAM
+    pb = create_page_block(0, 0xc0);
+    pb->buffer = create_page_buffer(pb->total_pages);
+    pb->accessor = RAM_accessor;
+    install_page_block(pb);
+    
+}
+
+/*******************
+ * Standard ROM
+ */
+
+/**
+ * Handles standard ROM access.
+ * @param[in] address Address of byte to access
+ * @param[in] read Read ROM when true
+ * @param[in] value Value to write
+ * @returns Value read
+ */
 static BYTE ROM_accessor(WORD address, bool read, BYTE value)
 {
     struct page_block_t *pb = get_page_block(address);
@@ -164,49 +218,9 @@ static BYTE ROM_accessor(WORD address, bool read, BYTE value)
     return value;
 }
 
-static BYTE *alt_zp_buf;
-static BYTE *norm_zp_buf;
-
-#define SS_SETSTDZP     0x08
-#define SS_SETALTZP     0x09
-#define SS_RDALTZP      0x16
-
-
-static BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value)
-{
-    struct page_block_t *pb = get_page_block(0);
-
-    if (SS_SETSTDZP == switch_no)
-        pb->buffer = norm_zp_buf;
-    else if(SS_SETALTZP == switch_no)
-        pb->buffer = alt_zp_buf;
-    else if (SS_RDALTZP == switch_no)
-        value = (pb->buffer == alt_zp_buf)? 0x80 : 0x00;
-
-    return value;
-}
-
-static void init_RAM()
-{
-    struct page_block_t *pb;
-    
-    // Create 16k (0x40 pages) of RAM
-    pb = create_page_block(0, 0xc0);
-    pb->buffer = create_page_buffer(pb->total_pages);
-    pb->accessor = RAM_accessor;
-    install_page_block(pb);
-    
-    // Create Alt zero page and stack (0x02 pages)
-    pb = create_page_block(0, 2);
-    install_page_block(pb);
-    alt_zp_buf = create_page_buffer(2);
-    norm_zp_buf = pb->buffer;
-    install_soft_switch(SS_SETSTDZP, SS_WRITE, zp_soft_switch);
-    install_soft_switch(SS_SETALTZP, SS_WRITE, zp_soft_switch);
-    install_soft_switch(SS_RDALTZP, SS_READ, zp_soft_switch);
-
-}
-
+/**
+ * Initialize standard RAM.
+ */
 static void init_ROM()
 {
     char *ROM_key;
@@ -220,42 +234,113 @@ static void init_ROM()
     install_page_block(pb);
 }
 
-static bool read_enabled = false;
-static bool write_enabled = false;
+/*****************************************
+ * Alternate zero page and stack routines
+ */
 
-static BYTE *D000_buffer[2];
+const BYTE ss_setstdzp  = 0x08; ///< Select standard zero page
+const BYTE ss_setaltzp  = 0x09; ///< Select alternate zero page
+const BYTE ss_rdaltzp   = 0x16; ///< Read which zero page is selected
 
-BYTE bank_switch_accessor(WORD address, bool read, BYTE value)
+/**
+ * Determine which zero page/stack to access.
+ * @param[in] switch_no Switch number to access
+ * @param[in] read Read switch when true.  Otherwise write.
+ * @param[in] value Value to write
+ * @returns Value read 
+ */
+static BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value)
+{
+    struct page_block_t *pb = get_page_block(0);
+    BYTE *buffer = (BYTE *) get_soft_switch(switch_no)->data;
+
+    if (ss_rdaltzp == switch_no)
+        value = (pb->buffer == buffer)? 0x80 : 0x00;
+    else
+        pb->buffer = buffer;
+
+    return value;
+}
+
+/**
+ * Initialize alternate stack and zero page.
+ */
+static void init_alt_zp()
+{
+    struct page_block_t *pb;
+    struct soft_switch_t *ss;
+
+    // Create Alt zero page and stack (0x02 pages)
+    pb = create_page_block(0, 2);
+    install_page_block(pb);
+    
+    ss = install_soft_switch(ss_setstdzp, SS_WRITE, zp_soft_switch);
+    ss->data = pb->buffer;
+    
+    ss = install_soft_switch(ss_setaltzp, SS_WRITE, zp_soft_switch);
+    ss->data = pb->buffer;
+    
+    ss = install_soft_switch(ss_rdaltzp, SS_READ, zp_soft_switch);
+    ss->data = pb->buffer;
+}
+
+/**
+ * @section bankswitching Bank switching routines
+ */
+
+static bool bs_read_enabled = false;   ///< Read bank switched RAM when true
+static bool bs_write_enabled = false;  ///< Write bank switched RAM when false
+
+static BYTE *D000_buffer[2]; //< Page D0 buffers
+
+/**
+ * Handles bank switched RAM access.
+ * @param[in] address Address of byte to access
+ * @param[in] read Read RAM when true
+ * @param[in] value Value to write
+ * @returns Value read
+ */
+static BYTE bank_switch_accessor(WORD address, bool read, BYTE value)
 {
     struct page_block_t *pb = get_page_block(address);
     BYTE *RAM_buffer = (BYTE *) pb->data;
             
     if (read) {
-        if (read_enabled)
+        if (bs_read_enabled)
             value = RAM_buffer[pb_offset(pb, address)];
         else
             value = pb->buffer[pb_offset(pb, address)];
     } else {
-        if (write_enabled)
+        if (bs_write_enabled)
             RAM_buffer[pb_offset(pb, address)] = value;
     }
 
     return value;
 }
 
-BYTE bank_switch_soft_switch(BYTE switch_no, bool read, BYTE value)
+/**
+ * Determine which ROM or RAM bank to access.
+ * @param[in] switch_no Switch number to access
+ * @param[in] read Read switch when true.  Otherwise write.
+ * @param[in] value Value to write
+ * @returns Value read 
+ */
+static BYTE bank_switch_soft_switch(BYTE switch_no, bool read, BYTE value)
 {
     struct page_block_t *pb = get_page_block(0xd000);
 
-    write_enabled = switch_no & 0x01;
-    read_enabled = ((switch_no & 0x03) == 0x03) || 
+    bs_write_enabled = switch_no & 0x01;
+    bs_read_enabled = ((switch_no & 0x03) == 0x03) || 
         ((switch_no & 0x03) == 0x00);
 
     pb->data = D000_buffer[(switch_no & 0x08)? 0 : 1];
     return value;
 }
 
-void init_bank_switch_memory()
+/**
+ * Initialize bank switching
+ */
+static void init_bank_switch_memory()
 {
     int i;
     struct page_block_t *pb;
@@ -276,9 +361,100 @@ void init_bank_switch_memory()
         install_soft_switch(i, SS_RDWR, bank_switch_soft_switch);    
 }
 
+/*****************************
+ * Auxiliary memory
+ */
+
+static bool aux_read_enabled = false;   ///< Aux RAM read enabled
+static bool aux_write_enabled = false;  ///< Aux RAM write enabled
+
+const BYTE ss_rdmainram = 0x02; ///< Set main RAM for reading
+const BYTE ss_rdcardram = 0x03; ///< Set aux RAM for reading
+const BYTE ss_wrmainram = 0x04; ///< Set main RAM for writing
+const BYTE ss_wrcardram = 0x05; ///< Set aux RAM for writing
+const BYTE ss_rdramrd   = 0x13; ///< Get status of main/aux RAM reading 
+const BYTE ss_rdramwrt  = 0x14; ///< Get status of main/aux RAM writing
+
+/**
+ * Handles auxiliary RAM access.
+ * @param[in] address Address of byte to access
+ * @param[in] read Read RAM when true
+ * @param[in] value Value to write
+ * @returns Value read
+ */
+static BYTE aux_RAM_accessor(WORD address, bool read, BYTE value)
+{
+    struct page_block_t *pb = get_page_block(address);
+    BYTE *buffer = (BYTE *) pb->data;
+
+    if (read) {
+        if (aux_read_enabled)
+            value = buffer[pb_offset(pb, address)];
+        else
+            value = pb->buffer[pb_offset(pb, address)];
+    } else {
+        if (aux_write_enabled)
+            buffer[pb_offset(pb, address)] = value;
+        else
+            pb->buffer[pb_offset(pb, address)] = value;
+    }
+
+    return value;
+}
+
+/**
+ * Determine which RAM bank (standard or auxiliary) to access.
+ * @param[in] switch_no Switch number to access
+ * @param[in] read Read switch when true.  Otherwise write.
+ * @param[in] value Value to write
+ * @returns Value read 
+ */
+static BYTE aux_mem_soft_switch(BYTE switch_no, bool read, BYTE value)
+{
+
+    if (ss_rdmainram == switch_no)   
+        aux_read_enabled = false;
+    else if (ss_rdcardram == switch_no)
+        aux_read_enabled = true;
+    else if (ss_wrmainram == switch_no)
+        aux_write_enabled = false;
+    else if (ss_wrcardram == switch_no)
+        aux_write_enabled = true;
+    else if (ss_rdramrd == switch_no)
+        value = aux_read_enabled? 0x80 : 0x00;
+    else
+        value = aux_write_enabled? 0x80 : 0x00;
+
+    return value;
+}
+/**
+ * Initialize auxiliary memory.
+ */
+static void init_aux_mem()
+{
+    struct page_block_t *pb;
+
+    pb = create_page_block(0x02, 0xbd);
+    pb->accessor = aux_RAM_accessor;
+    install_page_block(pb);
+    pb->data = create_page_buffer(0xbd);
+
+    install_soft_switch(ss_rdmainram, SS_WRITE, aux_mem_soft_switch);
+    install_soft_switch(ss_rdcardram, SS_WRITE, aux_mem_soft_switch);
+    install_soft_switch(ss_wrmainram, SS_WRITE, aux_mem_soft_switch);
+    install_soft_switch(ss_wrcardram, SS_WRITE, aux_mem_soft_switch);
+    install_soft_switch(ss_rdramrd, SS_READ, aux_mem_soft_switch);
+    install_soft_switch(ss_rdramwrt, SS_READ, aux_mem_soft_switch);
+}
+
+/**
+ * Initialize mmu routines
+ */
 void init_mmu()
 {
     init_RAM();
     init_ROM();
+    init_alt_zp();
     init_bank_switch_memory();
+    init_aux_mem();
 }

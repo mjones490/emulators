@@ -77,11 +77,16 @@ BYTE dos33_order[] = {
     0xBE, 0x3C, 0xAA, 0x28, 0x96, 0x14, 0x82, 0xFF
 };
 
-BYTE prodos_order[] = {
-    0x00, 0x02, 0x04, 0x06, 0x08, 0x0A, 0x0C, 0x0E,
-    0x01, 0x03, 0x05, 0x07, 0x09, 0x0B, 0x0D, 0x0F
-};
 
+BYTE prodos_order[] = {
+    0x00, 0x82, 0x14, 0x96, 0x28, 0xAA, 0x3C, 0xBE,
+    0x41, 0xC3, 0x55, 0xD7, 0x69, 0xEB, 0x7D, 0xFF
+};
+/*
+BYTE prodos_order[] = {
+    0x00, 0x02, 0x08, 0x0c, 0x01, 0x05, 0x09, 0x0d,
+    0x02, 0x06, 0x0a, 0x0e, 0x03, 0x07, 0x0b, 0x0F
+};*/
 void calibrate_rw_head(struct drive_t* drive)
 {
     int i;
@@ -90,20 +95,60 @@ void calibrate_rw_head(struct drive_t* drive)
         move_rw_head(drive, false);
 }
 
-void mount_disk(char *file_name, int drive_no, int order,
-    bool write_protected)
+bool dsk_to_map(struct drive_t *drive, char *file_name, int order)
 {
-    BYTE buf[256];
+    BYTE *sector_order = (order == 1)? prodos_order : dos33_order;
     int i;
     int j;
     int fd;
     size_t count;
     BYTE physical_place;
+
+    fd = open(file_name, O_RDONLY, NULL);
+    if (fd == -1) {
+        LOG_ERR("Error opening dsk.\n");
+        return false;
+    } 
+      
+    LOG_INF("Writting map...\n");
+    calibrate_rw_head(drive);
+
+    for(i = 0; i < 35; ++i) {
+        move_rw_head(drive, true);
+
+        for (j = 0; j < 16; ++j) {
+            physical_place = sector_order[j] & 0x0F; //>> 4;
+
+            count = read(fd, buf, 256);
+            if (count < 256) {
+                LOG_ERR("Error reading dsk.\n");
+                close(fd);
+                return false;
+            }
+           
+            //dump_buffer(buf, 256);
+            seek_sector(drive, physical_place & 0x0F);
+            write_sector(drive, buf);
+            write_sync_bytes(drive, 5);
+        }      
+
+        for (j = 0; j < 8; ++j)
+            read_byte(drive);
+        move_rw_head(drive, true);
+    }
+
+    close(fd);
+    return true;
+}
+
+void mount_disk(char *file_name, int drive_no, int order,
+    bool write_protected)
+{
+    BYTE buf[256];
     struct drive_t drive;
     struct drive_t *dest_drive;
     struct map_header_t *header;
     char map_filename[32];
-    BYTE *sector_order = (order == 1)? prodos_order : dos33_order;
 
     memset(buf, 0, 256);
     //6395
@@ -125,44 +170,12 @@ void mount_disk(char *file_name, int drive_no, int order,
     drive.empty = false;
 
     format_disk(&drive, 254);
-    
-    fd = open(file_name, O_RDONLY, NULL);
-    if (fd == -1) {
-        LOG_ERR("Error opening dsk.\n");
-        header->valid = false;
-    } else {
-        LOG_INF("Writting map...\n");
-        calibrate_rw_head(&drive);
-
-        for(i = 0; i < 35; ++i) {
-            move_rw_head(&drive, true);
-
-            for (j = 0; j < 16; ++j) {
-                physical_place = sector_order[j] & 0x0F; //>> 4;
-
-                count = read(fd, buf, 256);
-                if (count < 256) {
-                    LOG_ERR("Error reading dsk.\n");
-                    return;
-                }
-           
-                //dump_buffer(buf, 256);
-                seek_sector(&drive, physical_place & 0x0F);
-                write_sector(&drive, buf);
-                write_sync_bytes(&drive, 5);
-            }      
-
-            for (j = 0; j < 8; ++j)
-                read_byte(&drive);
-            move_rw_head(&drive, true);
-        }
-
-        close(fd);
-
+    if (dsk_to_map(&drive, file_name, order)) {    
         header->valid = true;
         header->hash = hash_fnv1a_32((char *) drive.map->data, 
             (int) drive.map_size);
-    }
+    } else
+        header->valid = false;
 
     unload_disk(&drive);
     init_drive(drive_no - 1);

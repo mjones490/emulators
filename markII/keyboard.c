@@ -112,6 +112,9 @@ static void init_key_map()
     set_key(SDLK_QUOTE,     '\'',   '\"',   0x00);
     set_key(SDLK_SEMICOLON, ';',    ':',    0x00);
     set_key(SDLK_SLASH,     '/',    '?',    0x00);
+    set_key(SDLK_RIGHTBRACKET, ']', '}',    0x00);
+    set_key(SDLK_LEFTBRACKET, '[',  '{',    0x00);
+
 
     set_key(SDLK_LEFT,      0x08,   0x08,   0x08);
     set_key(SDLK_RIGHT,     0x15,   0x15,   0x15);

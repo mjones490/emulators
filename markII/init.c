@@ -1,3 +1,7 @@
+/**
+ * @file init.c
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
@@ -37,6 +41,9 @@ static BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
     return value;
 }
 
+/**
+ * Initialize everything.
+ */
 void init_all()
 {
     init_logging(); 
@@ -45,6 +52,8 @@ void init_all()
        
     init_bus();
     init_mmu();
+    init_cpu();
+    
     init_video();
     init_sound();
     init_keyboard();
@@ -59,10 +68,12 @@ void init_all()
     add_shell_commands();
     set_log_output_hook(shell_print);
     
-    init_cpu();
     
 }
 
+/**
+ * Finalize everyting.
+ */
 void finalize_all()
 {
     shell_finalize();

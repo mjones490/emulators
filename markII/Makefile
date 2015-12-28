@@ -63,3 +63,5 @@ $(EXE) : $(EXE_OBJS) $(LIB) ../lib/libshell.a
 	$(CP) -v $(LIB) $(LIB_DIR)
 	$(CP) -v $(SHELL_LIB) $(LIB_DIR)
 
+docs :
+	doxygen Doxyfile
