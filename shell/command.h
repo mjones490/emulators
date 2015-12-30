@@ -13,4 +13,5 @@ struct command_t *get_command(int i);
 struct command_t *find_command(char *name);
 void command_initialize();
 char **command_completer(const char *text, int start, int end);
+void shell_free_commands();
 #endif

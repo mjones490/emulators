@@ -217,4 +217,6 @@ void shell_initialize(char *prompt)
 void shell_finalize()
 {
     rl_callback_handler_remove();
+    clear_history();
+    shell_free_commands();
 }

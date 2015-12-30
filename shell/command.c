@@ -34,6 +34,18 @@ command_func_t shell_add_command(char *name, char *description,
     return old_func;
 }
 
+void shell_free_commands()
+{
+    int i;
+
+    for (i = 0; i < num_commands; ++i) {
+        free(command[i].name);
+        free(command[i].description);
+    }
+
+    num_commands = 0;
+}
+
 struct command_t *get_command(int i)
 {
     struct command_t *cmd = NULL;
