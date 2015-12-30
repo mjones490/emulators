@@ -1,3 +1,8 @@
+/**
+ * @file video.c
+ * Video
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -14,36 +19,48 @@
 #include "bus.h"
 #include "mmu.h"
 
+/**
+ * Holds translations of display lines to starting addresses in memory
+ * and character generation ROM.
+ */
 struct scan_line_t {
-    WORD gfx_scan_line;
-    WORD txt_scan_line;
-    BYTE chr_line;
+    WORD gfx_scan_line;  ///< Graphics scan line
+    WORD txt_scan_line;  ///< Text scan line
+    BYTE chr_line;       ///< Character generation ROM line
 };
 
+/**
+ * Data for current state of the display
+ */
 struct screen_t {
-    SDL_Window          *window;
-    SDL_Renderer        *renderer;
-    SDL_Texture         *drawing_texture;
-    Uint16              *pixels;
-    int                 pitch;
-    WORD                vsync;
-    BYTE                hsync;
-    BYTE                *hi_res_page[2];
-    BYTE                *text_page[2];
-    bool                page_2_select;
-    bool                text_mode;
-    bool                mixed;
-    bool                vbl;
-    bool                hires;
-    bool                altchar;
-    BYTE                *character_ROM;
-    bool                flash;
-    BYTE                flash_count;
-    struct scan_line_t  scan_line[262];
+    SDL_Window          *window;            ///< Main window
+    SDL_Renderer        *renderer;          ///< Screen renderer
+    SDL_Texture         *drawing_texture;   ///< Drawing texture
+    Uint16              *pixels;            ///< Pointer to raw pixels 
+    int                 pitch;              ///< Width of pixels in bytes
+    WORD                vsync;              ///< Vertical sync counter
+    BYTE                hsync;              ///< Horizontal sync counter
+    BYTE                *hi_res_page[2];    ///< Hires page RAM
+    BYTE                *text_page[2];      ///< Text/lores page RAM
+    bool                page_2_select;      ///< Page 2 is selected
+    bool                text_mode;          ///< Text mode
+    bool                mixed;              ///< Mixed (graphics and text) mode
+    bool                vbl;                ///< In vertical blank state
+    bool                hires;              ///< Hi res graphics mode
+    bool                altchar;            ///< Alt character set selected
+    BYTE                *character_ROM;     ///< Character generator ROM
+    bool                flash;              ///< Flash state
+    BYTE                flash_count;        ///< Flash frame counter
+    struct scan_line_t  scan_line[262];     ///< Scan/display line xlate table
+    Uint32              last_render_time;   ///< Last time screen was rendered
+    bool                is_dirty;
 };
 
-struct screen_t screen;
+struct screen_t screen; ///< Current screen state
 
+/**
+ * Lock drawing texture so pixels can be accessed.
+ */
 static bool lock_drawing_texture()
 {
     bool ret = true;
@@ -58,12 +75,21 @@ static bool lock_drawing_texture()
     return ret;
 }
 
+/**
+ * Unlock drawing texture so screen can be drawn.
+ */
 static void unlock_drawing_texture()
 {
     SDL_UnlockTexture(screen.drawing_texture);
 }
 
-
+/**
+ * Initialize SDL.  Setup main window, renderer, and drawing texture.
+ * @param[in] w Width of main window
+ * @param[in] h Height of main window
+ * @param[in] render_scale_quality Quality of scaling pixel size to main window
+ * @param[in] window_title String to display at top of main window.
+ */
 static void init_screen(int w, int h, char *render_scale_quality, 
     char *window_title)
 {
@@ -108,38 +134,40 @@ static void init_screen(int w, int h, char *render_scale_quality,
     screen.hsync = 0;
 }
 
-void finalize_video()
-{
-    LOG_INF("Finalizing video...\n");
-
-    unlock_drawing_texture();
-    SDL_DestroyTexture(screen.drawing_texture);
-    SDL_DestroyRenderer(screen.renderer);
-    SDL_DestroyWindow(screen.window);
-    SDL_Quit();
-}
-
-static void render_screen()
+/**
+ * Render the screen at start of VBL.
+ */
+static inline void render_screen()
 {
     unlock_drawing_texture();
     SDL_RenderCopy(screen.renderer, screen.drawing_texture, NULL, NULL);
-    SDL_RenderPresent(screen.renderer);
+    screen.is_dirty = true;
     lock_drawing_texture();
 }
 
-
-void draw_pattern(BYTE pattern, BYTE row, BYTE column)
+/**
+ * Update the screen if a new one has been rendered and enough time has passed.
+ */
+static inline void update_screen()
 {
-    Uint32 color = 65535;
-    int pixel = (row * 280 * 2) + column * 7;
-    int i;
+    Uint32 timer = SDL_GetTicks();
+    Uint32 timer_diff = timer - screen.last_render_time;
 
-    for (i = 0; i < 7; ++i) {
-        screen.pixels[pixel + i] = (pattern & 0x01)? color : 0;
-        pattern >>= 1;
+    if (screen.is_dirty && 17 <= timer_diff) {
+        screen.is_dirty = false;
+        screen.last_render_time = timer;
+        SDL_RenderPresent(screen.renderer);
+        ++screen.flash_count;
     }
 }
 
+/**
+ * Plot two pixels to the screen.
+ * @param[in] row Display row to plot to
+ * @param[in] col Display column of first pixel
+ * @param[in] bitmask Bitmask representing the pixels.  First pixel is bit 0,
+ *  second pixes is bit 1.
+ */
 void plot(int row, int col, BYTE bitmask)
 {
     Uint32 color = 65535;
@@ -152,6 +180,9 @@ void plot(int row, int col, BYTE bitmask)
         screen.pixels[pixel + 1] = color;
 }
 
+/**
+ * Plot seven hi-res pixels to screen.
+ */
 static void draw_hires()
 {
     int i;
@@ -173,6 +204,9 @@ static void draw_hires()
     }
 }
 
+/**
+ * Plot one row of pixels for one character to the screen.
+ */
 static void draw_character()
 {
     int i;
@@ -193,6 +227,9 @@ static void draw_character()
     }
 }
 
+/**
+ * Plot one row of pixels for one lo-res block to the screen.
+ */
 static void draw_lores()
 {
     int i;
@@ -215,6 +252,9 @@ static void draw_lores()
     }
 }
 
+/**
+ * Determine mode and call the proper plotting function.
+ */
 static void select_mode()
 {
     if (screen.text_mode || (screen.mixed && screen.vsync >= 160)) {
@@ -227,6 +267,11 @@ static void select_mode()
     }
 }
 
+/**
+ * For each cpu clock, process one byte of video memory.  Handle sync counters
+ * and blanking signals.  Render screen during vertical blanking.
+ * param[in] clocks Number of clocks to process.
+ */
 void video_clock(BYTE clocks)
 {
     while (--clocks) {
@@ -237,48 +282,64 @@ void video_clock(BYTE clocks)
         if (++screen.hsync == 65) {
             screen.hsync = 0;
             if (++screen.vsync == 262) {
-                render_screen();
                 screen.vsync = 0;
-                if (++screen.flash_count == 15) {
-                    screen.flash_count = 0;
-                    screen.flash = !screen.flash;
-                }   
             }
 
             if (screen.vsync < 192) {
                 screen.vbl = false;
-            } else {
+            } else if (!screen.vbl) {
                 screen.vbl = true;
+                render_screen();
+                if (screen.flash_count == 15) {
+                    screen.flash_count = 0;
+                    screen.flash = !screen.flash;
+                }   
             }
         }
+
+        update_screen();
     }
 }
 
 /**
  * Video soft switches
  */
-const BYTE SS_CLRALTCHAR    = 0x0e;
-const BYTE SS_SETALTCHAR    = 0x0f;
-const BYTE SS_RDVBL         = 0x19;
-const BYTE SS_RDTEXT        = 0x1a;
-const BYTE SS_RDMIXED       = 0x1b;
-const BYTE SS_RDPAGE2       = 0x1c;
-const BYTE SS_RDHIRES       = 0x1d;
-const BYTE SS_RDALTCHAR     = 0x1e;
-const BYTE SS_TXTCLR        = 0x50;
-const BYTE SS_TXTSET        = 0x51;
-const BYTE SS_MIXCLR        = 0x52;
-const BYTE SS_MIXSET        = 0x53;
-const BYTE SS_TXTPAGE1      = 0x54;
-const BYTE SS_TXTPAGE2      = 0x55;
-const BYTE SS_LORES         = 0x56;
-const BYTE SS_HIRES         = 0x57;
+const BYTE SS_CLRALTCHAR    = 0x0e; ///< Clear alternate character set
+const BYTE SS_SETALTCHAR    = 0x0f; ///< Select alternate character set
+const BYTE SS_RDVBL         = 0x19; ///< Read vertical blanking state
+const BYTE SS_RDTEXT        = 0x1a; ///< Reat text mode selection state
+const BYTE SS_RDMIXED       = 0x1b; ///< Read mixed mode selection state
+const BYTE SS_RDPAGE2       = 0x1c; ///< Read page 2 selection state
+const BYTE SS_RDHIRES       = 0x1d; ///< Read hi-res graphics mode state
+const BYTE SS_RDALTCHAR     = 0x1e; ///< Read alternate charcter set state
+const BYTE SS_TXTCLR        = 0x50; ///< Clear text mode
+const BYTE SS_TXTSET        = 0x51; ///< Set text mode
+const BYTE SS_MIXCLR        = 0x52; ///< Clear mixed mode
+const BYTE SS_MIXSET        = 0x53; ///< Set mixed mode
+const BYTE SS_TXTPAGE1      = 0x54; ///< Select page one
+const BYTE SS_TXTPAGE2      = 0x55; ///< Select page two
+const BYTE SS_LORES         = 0x56; ///< Select lo-res graphics
+const BYTE SS_HIRES         = 0x57; ///< Select hi-res graphics
 
+/**
+ * Read vertical blanking state
+ * @param[in] switch_no Switch number to access
+ * @param[in] read Read switch when true.  Otherwise write.
+ * @param[in] value Value to write
+ * @returns Value read 
+ */
 BYTE ss_vbl(BYTE switch_no, bool read, BYTE value)
 {
     return screen.vbl? 0x00 : 0x80;
 }
 
+/**
+ * Read state of video switch
+ * @param[in] switch_no Switch number to access
+ * @param[in] read Read switch when true.  Otherwise write.
+ * @param[in] value Value to write
+ * @returns Value read 
+ */
 static BYTE video_switch_read(BYTE switch_no, bool read, BYTE value)
 {
     void *data = get_soft_switch(switch_no)->data;
@@ -286,6 +347,13 @@ static BYTE video_switch_read(BYTE switch_no, bool read, BYTE value)
 
 }
 
+/**
+ * Clear video switch
+ * @param[in] switch_no Switch number to access
+ * @param[in] read Read switch when true.  Otherwise write.
+ * @param[in] value Value to write
+ * @returns Value read 
+ */
 static BYTE video_switch_clear(BYTE switch_no, bool read, BYTE value)
 {
     void *data = get_soft_switch(switch_no)->data;
@@ -293,6 +361,13 @@ static BYTE video_switch_clear(BYTE switch_no, bool read, BYTE value)
     return value;
 }
 
+/**
+ * Set video switch
+ * @param[in] switch_no Switch number to access
+ * @param[in] read Read switch when true.  Otherwise write.
+ * @param[in] value Value to write
+ * @returns Value read 
+ */
 static BYTE video_switch_set(BYTE switch_no, bool read, BYTE value)
 {
     void *data = get_soft_switch(switch_no)->data;
@@ -300,6 +375,15 @@ static BYTE video_switch_set(BYTE switch_no, bool read, BYTE value)
     return value;
 }
 
+/**
+ * Set up indvidual video soft switch to use the read, set, and clear
+ * functions.
+ * @param[in] ss_read Switch number to read switch state
+ * @param[in] ss_clear Switch number to clear switch state
+ * @param[in] ss_set Switch number to set switch state
+ * @param[in] soft_switch Address of boolean varialble representing switch
+ *              state
+ */
 static void set_soft_switch(BYTE ss_read, BYTE ss_clear, BYTE ss_set, 
     bool *soft_switch)
 {
@@ -315,6 +399,9 @@ static void set_soft_switch(BYTE ss_read, BYTE ss_clear, BYTE ss_set,
     ss->data = soft_switch;
 }
 
+/**
+ * Install all video soft switches.
+ */
 static void install_video_soft_switches()
 {
 
@@ -441,6 +528,20 @@ void init_video()
 
     add_device(video_clock);
 
+}
+
+/**
+ * Unlock drawing texture and release SDL resources.
+ */
+void finalize_video()
+{
+    LOG_INF("Finalizing video...\n");
+
+    unlock_drawing_texture();
+    SDL_DestroyTexture(screen.drawing_texture);
+    SDL_DestroyRenderer(screen.renderer);
+    SDL_DestroyWindow(screen.window);
+    SDL_Quit();
 }
 
 

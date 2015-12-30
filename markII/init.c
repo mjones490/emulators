@@ -17,6 +17,7 @@
 #include "sound.h"
 #include "keyboard.h"
 #include "cpu_iface.h"
+#include "slot.h"
 #include "disk.h"
 #include "markII_commands.h"
 
@@ -52,6 +53,7 @@ void init_all()
        
     init_bus();
     init_mmu();
+    init_slot();
     init_cpu();
     
     init_video();
@@ -82,6 +84,7 @@ void finalize_all()
     finalize_disk();
     finalize_cpu();
     free_page_buffers();
+    free_page_block_list();
     finalize_config();
 }
 

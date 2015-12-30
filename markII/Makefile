@@ -10,6 +10,7 @@ EXE_OBJS := bus \
             logging \
             markII_commands \
             mmu \
+            slot \
             sound \
             video
 

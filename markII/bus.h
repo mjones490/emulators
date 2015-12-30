@@ -5,7 +5,7 @@
 #define __BUS_H
 #include <stdlib.h>
 #include <6502_cpu.h>
-
+#include <Stuff.h>
 /**
  * Page block
  */
@@ -15,6 +15,7 @@ struct page_block_t {
     int total_pages;        ///< Number of pages in this block
     BYTE *buffer;           ///< RAM buffer for this block
     void *data;             ///< Variable use data pointer
+    struct list_head list;  ///< List of allocated page buffers
 };
 
 typedef BYTE (*soft_switch_accessor_t)(BYTE switch_no, bool read, BYTE value);
@@ -32,6 +33,7 @@ struct soft_switch_t
 
 BYTE bus_accessor(WORD address, bool read, BYTE value);
 struct page_block_t *create_page_block(BYTE first_page, int total_pages);
+void free_page_block_list();
 BYTE *create_page_buffer(int total_pages);
 void free_page_buffers();
 bool install_page_block(struct page_block_t *pb);

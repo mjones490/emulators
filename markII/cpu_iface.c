@@ -16,7 +16,7 @@
 
 Uint32 prev_time = 0;       ///< Last time checked
 int remaining_clocks = 0;   ///< Remaining CPU clocks
-
+Uint32 frequency;
 /**
  * List of devices that need cpu clocks
  */
@@ -51,7 +51,7 @@ static bool has_clocks()
    
     if (remaining_clocks <= 0 && timer_diff >= 1) {
         prev_time = timer;
-        remaining_clocks = timer_diff * 1023;
+        remaining_clocks = timer_diff * frequency;
     }
 
     return remaining_clocks > 0;
@@ -124,6 +124,11 @@ void init_cpu()
         cpu_set_signal(SIG_RESET);
         cpu_clear_signal(SIG_HALT);
     }   
+
+    frequency = get_config_int("MARKII", "CPU_FREQ");
+    if (0 == frequency)
+        frequency = 1023;
+    LOG_INF("CPU clock frequency set to %dKhz.\n", frequency);
 
     INIT_LIST_HEAD(&device_list);
 }

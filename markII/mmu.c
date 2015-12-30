@@ -79,9 +79,12 @@ static struct ROM_descripter_t *parse_ROM(char *ROM_set)
 static void free_ROM(struct ROM_descripter_t *rd)
 {
     struct ROM_descripter_t *tmp;
-    for (tmp = rd; NULL != tmp; tmp = tmp->next) {
+    struct ROM_descripter_t *next;
+    for (tmp = rd; NULL != tmp; tmp = next) {
         LOG_DBG("Freeing ROM address = %p\n", tmp);
+        next = tmp->next;
         free(tmp);
+        tmp = next;
     }
 }
 
@@ -238,9 +241,9 @@ static void init_ROM()
  * Alternate zero page and stack routines
  */
 
-const BYTE ss_setstdzp  = 0x08; ///< Select standard zero page
-const BYTE ss_setaltzp  = 0x09; ///< Select alternate zero page
-const BYTE ss_rdaltzp   = 0x16; ///< Read which zero page is selected
+const BYTE SS_SETSTDZP  = 0x08; ///< Select standard zero page
+const BYTE SS_SETALTZP  = 0x09; ///< Select alternate zero page
+const BYTE SS_RDALTZP   = 0x16; ///< Read which zero page is selected
 
 /**
  * Determine which zero page/stack to access.
@@ -254,7 +257,7 @@ static BYTE zp_soft_switch(BYTE switch_no, bool read, BYTE value)
     struct page_block_t *pb = get_page_block(0);
     BYTE *buffer = (BYTE *) get_soft_switch(switch_no)->data;
 
-    if (ss_rdaltzp == switch_no)
+    if (SS_RDALTZP == switch_no)
         value = (pb->buffer == buffer)? 0x80 : 0x00;
     else
         pb->buffer = buffer;
@@ -274,13 +277,13 @@ static void init_alt_zp()
     pb = create_page_block(0, 2);
     install_page_block(pb);
     
-    ss = install_soft_switch(ss_setstdzp, SS_WRITE, zp_soft_switch);
+    ss = install_soft_switch(SS_SETSTDZP, SS_WRITE, zp_soft_switch);
     ss->data = pb->buffer;
     
-    ss = install_soft_switch(ss_setaltzp, SS_WRITE, zp_soft_switch);
+    ss = install_soft_switch(SS_SETALTZP, SS_WRITE, zp_soft_switch);
     ss->data = pb->buffer;
     
-    ss = install_soft_switch(ss_rdaltzp, SS_READ, zp_soft_switch);
+    ss = install_soft_switch(SS_RDALTZP, SS_READ, zp_soft_switch);
     ss->data = pb->buffer;
 }
 
@@ -368,12 +371,12 @@ static void init_bank_switch_memory()
 static bool aux_read_enabled = false;   ///< Aux RAM read enabled
 static bool aux_write_enabled = false;  ///< Aux RAM write enabled
 
-const BYTE ss_rdmainram = 0x02; ///< Set main RAM for reading
-const BYTE ss_rdcardram = 0x03; ///< Set aux RAM for reading
-const BYTE ss_wrmainram = 0x04; ///< Set main RAM for writing
-const BYTE ss_wrcardram = 0x05; ///< Set aux RAM for writing
-const BYTE ss_rdramrd   = 0x13; ///< Get status of main/aux RAM reading 
-const BYTE ss_rdramwrt  = 0x14; ///< Get status of main/aux RAM writing
+const BYTE SS_RDMAINRAM = 0x02; ///< Set main RAM for reading
+const BYTE SS_RDCARDRAM = 0x03; ///< Set aux RAM for reading
+const BYTE SS_WRMAINRAM = 0x04; ///< Set main RAM for writing
+const BYTE SS_WRCARDRAM = 0x05; ///< Set aux RAM for writing
+const BYTE SS_RDRAMRD   = 0x13; ///< Get status of main/aux RAM reading 
+const BYTE SS_RDRAMWRT  = 0x14; ///< Get status of main/aux RAM writing
 
 /**
  * Handles auxiliary RAM access.
@@ -412,15 +415,15 @@ static BYTE aux_RAM_accessor(WORD address, bool read, BYTE value)
 static BYTE aux_mem_soft_switch(BYTE switch_no, bool read, BYTE value)
 {
 
-    if (ss_rdmainram == switch_no)   
+    if (SS_RDMAINRAM == switch_no)   
         aux_read_enabled = false;
-    else if (ss_rdcardram == switch_no)
+    else if (SS_RDCARDRAM == switch_no)
         aux_read_enabled = true;
-    else if (ss_wrmainram == switch_no)
+    else if (SS_WRMAINRAM == switch_no)
         aux_write_enabled = false;
-    else if (ss_wrcardram == switch_no)
+    else if (SS_WRCARDRAM == switch_no)
         aux_write_enabled = true;
-    else if (ss_rdramrd == switch_no)
+    else if (SS_RDRAMRD == switch_no)
         value = aux_read_enabled? 0x80 : 0x00;
     else
         value = aux_write_enabled? 0x80 : 0x00;
@@ -439,12 +442,12 @@ static void init_aux_mem()
     install_page_block(pb);
     pb->data = create_page_buffer(0xbd);
 
-    install_soft_switch(ss_rdmainram, SS_WRITE, aux_mem_soft_switch);
-    install_soft_switch(ss_rdcardram, SS_WRITE, aux_mem_soft_switch);
-    install_soft_switch(ss_wrmainram, SS_WRITE, aux_mem_soft_switch);
-    install_soft_switch(ss_wrcardram, SS_WRITE, aux_mem_soft_switch);
-    install_soft_switch(ss_rdramrd, SS_READ, aux_mem_soft_switch);
-    install_soft_switch(ss_rdramwrt, SS_READ, aux_mem_soft_switch);
+    install_soft_switch(SS_RDMAINRAM, SS_WRITE, aux_mem_soft_switch);
+    install_soft_switch(SS_RDCARDRAM, SS_WRITE, aux_mem_soft_switch);
+    install_soft_switch(SS_WRMAINRAM, SS_WRITE, aux_mem_soft_switch);
+    install_soft_switch(SS_WRCARDRAM, SS_WRITE, aux_mem_soft_switch);
+    install_soft_switch(SS_RDRAMRD, SS_READ, aux_mem_soft_switch);
+    install_soft_switch(SS_RDRAMWRT, SS_READ, aux_mem_soft_switch);
 }
 
 /**

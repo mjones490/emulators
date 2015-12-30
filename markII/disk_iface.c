@@ -13,43 +13,7 @@
 #include "bus.h"
 #include "cpu_iface.h"
 #include "mmu.h"
-
-// Temporary slot-ROM stuff
-BYTE *boot_ROM;
-BYTE *int_ROM;
-
-const BYTE SETSLOTCXROM = 0x06;
-const BYTE SETINTCXROM  = 0x07;
-const BYTE RDCXROM = 0x15;
-
-BYTE CXROM_switch(BYTE switch_no, bool read, BYTE value)
-{
-    struct page_block_t *pb = get_page_block(0xC600);
-    if (switch_no == SETSLOTCXROM)
-        pb->buffer = boot_ROM;
-    else if (switch_no == SETINTCXROM)
-        pb->buffer = int_ROM;
-    else
-        value = (pb->buffer == boot_ROM)? 0x80 : 0x00;
-        
-    return value;    
-}
-
-void init_slot_ROM()
-{
-    struct page_block_t *pb;
-    char *boot_ROM_name = get_config_string("DISKII", "BOOT_ROM");
-    boot_ROM = load_ROM(boot_ROM_name, 1);
-    
-    pb = create_page_block(0xC6, 1);
-    install_page_block(pb);
-    int_ROM = pb->buffer;
-    
-    install_soft_switch(SETSLOTCXROM, SS_WRITE, CXROM_switch);             
-    install_soft_switch(SETINTCXROM, SS_WRITE, CXROM_switch);             
-    install_soft_switch(RDCXROM, SS_READ, CXROM_switch);             
-}
-
+#include "slot.h"
 
 // Disk config
 char *disk_1_mapfile = NULL;
@@ -69,8 +33,6 @@ bool load_disk_config()
         return false;
     }
 
-    init_slot_ROM();
-
     return true;
 }
 
@@ -80,22 +42,22 @@ bool load_disk_config()
 struct drive_t* drive;
 struct drive_t ddrive[2];
 
-#define PHASE_0_OFF         0xE0
-#define PHASE_0_ON          0xE1
-#define PHASE_1_OFF         0xE2
-#define PHASE_1_ON          0xE3
-#define PHASE_2_OFF         0xE4
-#define PHASE_2_ON          0xE5
-#define PHASE_3_OFF         0xE6
-#define PHASE_3_ON          0xE7
-#define DRIVE_MOTOR_OFF     0xE8
-#define DRIVE_MOTOR_ON      0xE9
-#define DRIVE_0_ENGAGE      0xEA
-#define DRIVE_1_ENGAGE      0xEB
-#define STROBE_DATA_LATCH   0xEC
-#define LOAD_DATA_LATCH     0xED
-#define INPUT_LATCH         0xEE
-#define OUTPUT_LATCH        0xEF
+#define PHASE_0_OFF         0x00
+#define PHASE_0_ON          0x01
+#define PHASE_1_OFF         0x02
+#define PHASE_1_ON          0x03
+#define PHASE_2_OFF         0x04
+#define PHASE_2_ON          0x05
+#define PHASE_3_OFF         0x06
+#define PHASE_3_ON          0x07
+#define DRIVE_MOTOR_OFF     0x08
+#define DRIVE_MOTOR_ON      0x09
+#define DRIVE_0_ENGAGE      0x0A
+#define DRIVE_1_ENGAGE      0x0B
+#define STROBE_DATA_LATCH   0x0C
+#define LOAD_DATA_LATCH     0x0D
+#define INPUT_LATCH         0x0E
+#define OUTPUT_LATCH        0x0F
 
 BYTE drive_motor(BYTE port, bool read, BYTE value)
 {
@@ -230,17 +192,25 @@ void init_drive(int drive_no)
 void set_port(BYTE switch_no, soft_switch_accessor_t accessor,
     soft_switch_accessor_t dummy)
 {
-    install_soft_switch(switch_no, SS_RDWR, accessor);
+    install_slot_switch(switch_no, SS_RDWR, accessor);
 }
 
 void init_disk()
 {
+    char *boot_ROM_name = get_config_string("DISKII", "BOOT_ROM");
+    BYTE *boot_ROM = load_ROM(boot_ROM_name, 1);
+    BYTE *expansion_ROM;
+    
     LOG_INF("Init DiskII...\n");
     if (!load_disk_config()) {
         LOG_ERR("Error reading DiskII configuration.\n");
         return;
     }
-
+    
+    expansion_ROM = create_page_buffer(0x08);
+    strcpy(expansion_ROM, "Hello, world!!");   
+    install_slot_ROM(0x05, boot_ROM, expansion_ROM);
+    
     init_drive(0);
     init_drive(1);
 

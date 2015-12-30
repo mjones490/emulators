@@ -33,6 +33,8 @@ BYTE bus_accessor(WORD address, bool read, BYTE value)
     return value;
 }
 
+struct list_head page_buffers; ///< List of page buffers
+
 /**
  * Create and set up page block.
  * @param[in] first_page First page number of new page block.
@@ -52,6 +54,7 @@ struct page_block_t *create_page_block(BYTE first_page, int total_pages)
     memset(pb, 0, sizeof(struct page_block_t));
     pb->first_page = first_page;
     pb->total_pages = total_pages;
+    list_add(&pb->list, &page_buffers);
     return pb;
 }
 
@@ -59,6 +62,25 @@ struct buffer_list_t {
     BYTE *buffer;           ///< Page buffer
     struct list_head list;  ///< Buffer list.
 };
+
+void destroy_page_block(struct page_block_t *pb)
+{
+    list_remove(&pb->list);
+    free(pb);
+}
+
+void free_page_block_list()
+{
+    struct page_block_t *pb;
+    struct list_head *current;
+    struct list_head *next;
+
+    LOG_INF("Freeing page blocks.\n");
+    LIST_FOR_EACH_SAFE(current, next, &page_buffers) {
+        pb = GET_ELEMENT(struct page_block_t, list, current);
+        destroy_page_block(pb);
+    }
+}
 
 struct list_head buffers; ///< List of allocated buffers
 
@@ -224,6 +246,7 @@ void init_bus()
     LOG_DBG("Size of page_block is %p\n", sizeof(page_block));
     memset(page_block, 0, sizeof(page_block));
     INIT_LIST_HEAD(&buffers);
+    INIT_LIST_HEAD(&page_buffers);
     init_soft_switches();
 }
 
