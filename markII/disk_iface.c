@@ -18,6 +18,7 @@
 // Disk config
 char *disk_1_mapfile = NULL;
 char *disk_2_mapfile = NULL;
+int slot_no;
 
 bool load_disk_config()
 {
@@ -33,6 +34,11 @@ bool load_disk_config()
         return false;
     }
 
+    slot_no = get_config_int("DISKII", "SLOT_NUMBER");
+    if (0 == slot_no)
+        slot_no = 6;
+    LOG_INF("Disk II slot number is %d.\n", slot_no);
+    
     return true;
 }
 
@@ -199,7 +205,6 @@ void init_disk()
 {
     char *boot_ROM_name = get_config_string("DISKII", "BOOT_ROM");
     BYTE *boot_ROM = load_ROM(boot_ROM_name, 1);
-    BYTE *expansion_ROM;
     
     LOG_INF("Init DiskII...\n");
     if (!load_disk_config()) {
@@ -207,9 +212,7 @@ void init_disk()
         return;
     }
     
-    expansion_ROM = create_page_buffer(0x08);
-    strcpy(expansion_ROM, "Hello, world!!");   
-    install_slot_ROM(0x05, boot_ROM, expansion_ROM);
+    install_slot_ROM(slot_no, boot_ROM, NULL);
     
     init_drive(0);
     init_drive(1);

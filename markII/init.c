@@ -83,6 +83,7 @@ void finalize_all()
     finalize_video();
     finalize_disk();
     finalize_cpu();
+    finalize_slot();
     free_page_buffers();
     free_page_block_list();
     finalize_config();
