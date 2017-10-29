@@ -237,9 +237,8 @@ static void init_ROM()
     install_page_block(pb);
 }
 
-/**
- * @name Alternate Zero Page and Stack
- * @{
+/*****************************************
+ * Alternate zero page and stack routines
  */
 
 const BYTE SS_SETSTDZP  = 0x08; ///< Select standard zero page
@@ -287,11 +286,9 @@ static void init_alt_zp()
     ss = install_soft_switch(SS_RDALTZP, SS_READ, zp_soft_switch);
     ss->data = pb->buffer;
 }
-/*@}*/
 
 /**
- * @name Bank Switching
- * @{
+ * @section bankswitching Bank switching routines
  */
 
 static bool bs_read_enabled = false;   ///< Read bank switched RAM when true
@@ -366,11 +363,9 @@ static void init_bank_switch_memory()
     for (i = 0x80; i <= 0x8f; ++i)
         install_soft_switch(i, SS_RDWR, bank_switch_soft_switch);    
 }
-/*@}*/
 
-/**
- * @name Auxiliary Memory
- * @{
+/*****************************
+ * Auxiliary memory
  */
 
 static bool aux_read_enabled = false;   ///< Aux RAM read enabled
@@ -435,7 +430,6 @@ static BYTE aux_mem_soft_switch(BYTE switch_no, bool read, BYTE value)
 
     return value;
 }
-
 /**
  * Initialize auxiliary memory.
  */
@@ -455,12 +449,6 @@ static void init_aux_mem()
     install_soft_switch(SS_RDRAMRD, SS_READ, aux_mem_soft_switch);
     install_soft_switch(SS_RDRAMWRT, SS_READ, aux_mem_soft_switch);
 }
-/*@}*/
-
-/**
- * @name Initialization
- * @{
- */
 
 /**
  * Initialize mmu routines
@@ -473,4 +461,3 @@ void init_mmu()
     init_bank_switch_memory();
     init_aux_mem();
 }
-/*@}*/

@@ -29,8 +29,6 @@ struct scan_line_t {
     BYTE chr_line;       ///< Character generation ROM line
 };
 
-Uint32 color[16];
-
 /**
  * Data for current state of the display
  */
@@ -61,7 +59,7 @@ struct screen_t {
 struct screen_t screen; ///< Current screen state
 
 /**
- * @brief Lock drawing texture so pixels can be accessed.
+ * Lock drawing texture so pixels can be accessed.
  */
 static bool lock_drawing_texture()
 {
@@ -86,6 +84,57 @@ static void unlock_drawing_texture()
 }
 
 /**
+ * Initialize SDL.  Setup main window, renderer, and drawing texture.
+ * @param[in] w Width of main window
+ * @param[in] h Height of main window
+ * @param[in] render_scale_quality Quality of scaling pixel size to main window
+ * @param[in] window_title String to display at top of main window.
+ */
+static void init_screen(int w, int h, char *render_scale_quality, 
+    char *window_title)
+{
+    if (0 > SDL_Init(SDL_INIT_VIDEO)) {
+        printf("Error initializing SDL: %s\n", SDL_GetError());
+        exit(1);
+    }
+
+    screen.window = SDL_CreateWindow(window_title, SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    if (NULL == screen.window) {
+        printf("Error creating main window: %s\n", SDL_GetError());
+        exit(1);       
+    }
+
+    screen.renderer = SDL_CreateRenderer(screen.window, -1, 
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | 
+        SDL_RENDERER_TARGETTEXTURE);
+    if (NULL == screen.renderer) {
+        printf("Error creating main renderer: %s\n", SDL_GetError());
+        exit(1);       
+    }
+
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, render_scale_quality);
+    SDL_RenderSetLogicalSize(screen.renderer, 280, 192);
+    SDL_SetRenderDrawColor(screen.renderer, 0, 0, 0, 0);
+    SDL_RenderClear(screen.renderer);
+
+    // Create drawing texture
+    screen.drawing_texture = SDL_CreateTexture(screen.renderer, 
+        SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 280 * 2, 192);
+    
+    if (screen.drawing_texture != NULL) {
+        LOG_DBG("Drawing texture created.\n");
+        if (lock_drawing_texture())
+            LOG_DBG("Pitch = %d.\n", screen.pitch);
+    } else {
+        LOG_ERR("Error creating drawing texture: %s\n", SDL_GetError());
+    }
+
+    screen.vsync = 0;
+    screen.hsync = 0;
+}
+
+/**
  * Render the screen at start of VBL.
  */
 static inline void render_screen()
@@ -97,8 +146,7 @@ static inline void render_screen()
 }
 
 /**
- * Update the screen if a new one has been rendered and enough
- * time has passed.
+ * Update the screen if a new one has been rendered and enough time has passed.
  */
 static inline void update_screen()
 {
@@ -120,74 +168,39 @@ static inline void update_screen()
  * @param[in] bitmask Bitmask representing the pixels.  First pixel is bit 0,
  *  second pixes is bit 1.
  */
-inline void plot(int row, int col, BYTE color_ndx)
+void plot(int row, int col, BYTE bitmask)
 {
-    int pixel;
-    
-    if (col >= 0) {    
-        pixel = (row * 560) + col;
-        screen.pixels[pixel] = color[color_ndx];
-    }
+    Uint32 color = 65535;
+    int pixel = (row * 560) + (col << 1);
+
+    if (bitmask & 0x01)
+        screen.pixels[pixel] = color;
+
+    if (bitmask & 0x02)
+        screen.pixels[pixel + 1] = color;
 }
 
-inline void wplot(int row, int col, BYTE color_ndx)
-{
-    plot(row, col, color_ndx);
-    plot(row, col + 1, color_ndx);
-}
-
-const Uint32 hi_color[] = {3, 12, 6, 9}; 
 /**
  * Plot seven hi-res pixels to screen.
  */
 static void draw_hires()
 {
-    static WORD vsync;
     int i;
     BYTE *page = screen.hi_res_page[screen.page_2_select? 1 : 0];
     BYTE pattern = *(page + screen.scan_line[screen.vsync].gfx_scan_line +
         screen.hsync);
-    int o = (pattern & 0x80)? 2 : 0;
-    int base_col = 14 * screen.hsync;
-
-    static Uint32 color_0;
-    static Uint32 color_1;
-    static bool prev_pixel;
-    static bool cur_pixel;
-
-    if (vsync != screen.vsync) {
-        vsync = screen.vsync;
-        prev_pixel = false;
-    }
-     
+    WORD pixels = 0;
 
     for (i = 0; i < 7; ++i) {
-        color_0 = color_1;
-        color_1 = 0;
-        cur_pixel = pattern & 0x01;
-        if (cur_pixel) {
-            if (prev_pixel) {
-               color_1 = 15;
-               color_0 = 15;
-            } else        
-               color_1 = hi_color[o + ((screen.hsync + i) & 0x01)];            
-            //color_0 = color_1;
-        } else {
-            if (prev_pixel) {
-                //if (color_0 != 15)
-                    color_1 = color_0;
-                //else 
-                  //  color_1 = 0;
-            }
-            else color_1 = 0;
-            color_0 = 0;
-        }
-     
-        if (color_0 > 0)
-            wplot(screen.vsync, o + base_col + (2 * i) - 2, color_0); 
-        wplot(screen.vsync, o + base_col + (2 * i), color_1); 
-        prev_pixel = cur_pixel;
+        pixels = ((pattern & 0x01)? 0xc000 : 0x0000) | (pixels >> 2);
         pattern >>= 1;
+    }
+
+    pixels >>= (pattern & 0x01)? 1 : 2;
+     
+    for (i = 0; i < 8; ++i) {
+        plot(screen.vsync, (7 * screen.hsync) + i, (pixels & 0x03));
+        pixels >>= 2;
     }
 }
 
@@ -209,9 +222,7 @@ static void draw_character()
     pattern = ~screen.character_ROM[(character << 3) + pattern_offset];
    
     for (i = 0; i < 7; ++i) {
-        if (pattern & 0x01) {
-            wplot(screen.vsync, (14 * screen.hsync) + i * 2, 15);
-        }
+        plot(screen.vsync, (7 * screen.hsync) + i, 3 * (pattern & 0x01));
         pattern >>= 1;
     }
 }
@@ -231,13 +242,13 @@ static void draw_lores()
     else
         pattern >>= 4;
 
-    //pattern |= (pattern << 4);
-    //if (!(screen.hsync & 0x01))
-    //    pattern = (pattern << 1) | (pattern >> 7);
+    pattern |= (pattern << 4);
+    if (!(screen.hsync & 0x01))
+        pattern = (pattern << 1) | (pattern >> 7);
 
-    for (i =0; i < 14; ++i) {
-        plot(screen.vsync, (14 * screen.hsync) + i, pattern);
-      //  pattern = (pattern << 7) | (pattern >> 1);
+    for (i =0; i < 7; ++i) {
+        plot(screen.vsync, (7 * screen.hsync) + i, pattern & 0x03);
+        pattern = (pattern << 6) | (pattern >> 2);
     }
 }
 
@@ -365,11 +376,6 @@ static BYTE video_switch_set(BYTE switch_no, bool read, BYTE value)
 }
 
 /**
- * @name Initialization
- * @{
- */
-
-/**
  * Set up indvidual video soft switch to use the read, set, and clear
  * functions.
  * @param[in] ss_read Switch number to read switch state
@@ -394,7 +400,7 @@ static void set_soft_switch(BYTE ss_read, BYTE ss_clear, BYTE ss_set,
 }
 
 /**
- * @brief Install all video soft switches.
+ * Install all video soft switches.
  */
 static void install_video_soft_switches()
 {
@@ -415,6 +421,9 @@ static void install_video_soft_switches()
 
 }
 
+/**
+ * Load video configuration setting.
+ */
 
 SDL_Texture *base_texture;
 
@@ -426,9 +435,6 @@ struct {
     char    *window_title;
 } video_config;
 
-/**
- * @brief Load video configuration setting.
- */
 void configure_video()
 {
     char buf[256];
@@ -463,79 +469,6 @@ void configure_video()
     if (NULL == video_config.video_ROM) 
         LOG_FTL("VIDEO_ROM not found.\n");
 }
-
-/**
- * Initialize SDL.  Setup main window, renderer, and drawing texture.
- * @param[in] w Width of main window
- * @param[in] h Height of main window
- * @param[in] render_scale_quality Quality of scaling pixel size to main window
- * @param[in] window_title String to display at top of main window.
- */
-static void init_screen(int w, int h, char *render_scale_quality, 
-    char *window_title)
-{
-    SDL_PixelFormat *format;
-
-    if (0 > SDL_Init(SDL_INIT_VIDEO)) {
-        printf("Error initializing SDL: %s\n", SDL_GetError());
-        exit(1);
-    }
-
-    screen.window = SDL_CreateWindow(window_title, SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-    if (NULL == screen.window) {
-        printf("Error creating main window: %s\n", SDL_GetError());
-        exit(1);       
-    }
-
-    screen.renderer = SDL_CreateRenderer(screen.window, -1, 
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | 
-        SDL_RENDERER_TARGETTEXTURE);
-    if (NULL == screen.renderer) {
-        printf("Error creating main renderer: %s\n", SDL_GetError());
-        exit(1);       
-    }
-
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, render_scale_quality);
-    SDL_RenderSetLogicalSize(screen.renderer, 280, 192);
-    SDL_SetRenderDrawColor(screen.renderer, 0, 0, 0, 0);
-    SDL_RenderClear(screen.renderer);
-
-    // Create drawing texture
-    screen.drawing_texture = SDL_CreateTexture(screen.renderer, 
-        SDL_PIXELFORMAT_RGB444, SDL_TEXTUREACCESS_STREAMING, 280 * 2, 192);
-    
-    if (screen.drawing_texture != NULL) {
-        LOG_DBG("Drawing texture created.\n");
-        if (lock_drawing_texture())
-            LOG_DBG("Pitch = %d.\n", screen.pitch);
-    } else {
-        LOG_ERR("Error creating drawing texture: %s\n", SDL_GetError());
-    }
-
-    format = SDL_AllocFormat(SDL_PIXELFORMAT_RGB444);
-    color[0] = SDL_MapRGB(format, 0x00, 0x00, 0x00);    ///< Black
-    color[1] = SDL_MapRGB(format, 0xcc, 0x00, 0x33);    ///< Magenta
-    color[2] = SDL_MapRGB(format, 0x00, 0x00, 0x99);    ///< Dark Blue
-    color[3] = SDL_MapRGB(format, 0xcc, 0x33, 0xcc);    ///< Purble 
-    color[4] = SDL_MapRGB(format, 0x00, 0x66, 0x33);    ///< Dark Green
-    color[5] = SDL_MapRGB(format, 0x66, 0x66, 0x66);    ///< Dark Grey
-    color[6] = SDL_MapRGB(format, 0x33, 0x33, 0xff);    ///< Med Blue
-    color[7] = SDL_MapRGB(format, 0x66, 0x99, 0xff);    ///< Light Blue
-    color[8] = SDL_MapRGB(format, 0x99, 0x66, 0x00);    ///< Brown
-    color[9] = SDL_MapRGB(format, 0xff, 0x66, 0x00);    ///< Orange 
-    color[10] = SDL_MapRGB(format, 0x99, 0x99, 0x99);   ///< Light Grey
-    color[11] = SDL_MapRGB(format, 0xff, 0x99, 0x99);   ///< Pink 
-    color[12] = SDL_MapRGB(format, 0x00, 0xcc, 0x00);   ///< Light Green 
-    color[13] = SDL_MapRGB(format, 0xff, 0xff, 0x00);   ///< Yellow
-    color[14] = SDL_MapRGB(format, 0x33, 0xff, 0x99);   ///< Aqua
-    color[15] = SDL_MapRGB(format, 0xff, 0xff, 0xff);   ///< White 
-    SDL_FreeFormat(format);
-
-    screen.vsync = 0;
-    screen.hsync = 0;
-}
-
 /**
  * @brief Initialize video subsystem.
  *
@@ -611,7 +544,6 @@ void finalize_video()
     SDL_Quit();
 }
 
-/*@}*/
 
 
 
