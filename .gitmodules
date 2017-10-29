@@ -1,0 +1,3 @@
+[submodule "markII/Stuff"]
+	path = markII/Stuff
+	url = ../../git/Stuff/
