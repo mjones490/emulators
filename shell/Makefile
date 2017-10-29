@@ -24,6 +24,7 @@ all : $(LIB)
  
 %.a : $(LIB_OBJS) 
 	$(AR) crv $@ $(LIB_OBJS)
+	mkdir -pv $(LIB_DIR)
 	$(CP) $(LIB) $(LIB_DIR)
 
 clean :

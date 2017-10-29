@@ -44,6 +44,7 @@ $(EXE) : $(EXE_OBJS) $(LIB) ../lib/libshell.a
 %.a : $(LIB_OBJS) $(SHELL_LIB_OBJS)
 	$(AR) crv $(LIB) $(LIB_OBJS)
 	$(AR) crv $(SHELL_LIB) $(SHELL_LIB_OBJS)
+	mkdir -pv $(LIB_DIR)
 	$(CP) -v $(LIB) $(LIB_DIR)
 	$(CP) -v $(SHELL_LIB) $(LIB_DIR)
 
