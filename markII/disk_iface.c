@@ -1,3 +1,6 @@
+/**
+ * @file disk_iface.c
+ */ 
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -15,59 +18,38 @@
 #include "mmu.h"
 #include "slot.h"
 
-// Disk config
-char *disk_1_mapfile = NULL;
-char *disk_2_mapfile = NULL;
-int slot_no;
-
-bool load_disk_config()
-{
-    disk_1_mapfile = get_config_string("DISKII", "DISK_1_MAPFILE");
-    if (disk_1_mapfile == NULL) {
-        LOG_ERR("Could not find DISK_1_MAPFILE.\n");
-        return false;
-    }
-
-    disk_2_mapfile = get_config_string("DISKII", "DISK_2_MAPFILE");
-    if (disk_2_mapfile == NULL) {
-        LOG_ERR("Could not find DISK_2_MAPFILE.\n");
-        return false;
-    }
-
-    slot_no = get_config_int("DISKII", "SLOT_NUMBER");
-    if (0 == slot_no)
-        slot_no = 6;
-    LOG_INF("Disk II slot number is %d.\n", slot_no);
-    
-    return true;
-}
-
 /****************************************************************
  * 6502 Interface code
  ****************************************************************/
 struct drive_t* drive;
 struct drive_t ddrive[2];
 
-#define PHASE_0_OFF         0x00
-#define PHASE_0_ON          0x01
-#define PHASE_1_OFF         0x02
-#define PHASE_1_ON          0x03
-#define PHASE_2_OFF         0x04
-#define PHASE_2_ON          0x05
-#define PHASE_3_OFF         0x06
-#define PHASE_3_ON          0x07
-#define DRIVE_MOTOR_OFF     0x08
-#define DRIVE_MOTOR_ON      0x09
-#define DRIVE_0_ENGAGE      0x0A
-#define DRIVE_1_ENGAGE      0x0B
-#define STROBE_DATA_LATCH   0x0C
-#define LOAD_DATA_LATCH     0x0D
-#define INPUT_LATCH         0x0E
-#define OUTPUT_LATCH        0x0F
+/** @name Soft Switches
+ * Soft switches used by disk interface
+ */
+///@{
+const BYTE SS_PHASE0OFF = 0x00; ///< Stepper motor phase 0 off.
+const BYTE SS_PHASE0ON  = 0x01; ///< Stepper motor phase 0 on.
+const BYTE SS_PHASE1OFF = 0x02; ///< Stepper motor phase 1 off.
+const BYTE SS_PHASE1ON  = 0x03; ///< Stepper motor phase 1 on.
+const BYTE SS_PHASE2OFF = 0x04; ///< Stepper motor phase 2 off.
+const BYTE SS_PHASE2ON  = 0x05; ///< Stepper motor phase 2 on.
+const BYTE SS_PHASE3OFF = 0x06; ///< Stepper motor phase 3 off.
+const BYTE SS_PHASE3ON  = 0x07; ///< Stepper motor phase 3 on.
+const BYTE SS_MOTOROFF  = 0x08; ///< Turn motor off.
+const BYTE SS_MOTORON   = 0x09; ///< Turn motor on.
+const BYTE SS_DRV0EN    = 0x0a; ///< Engage drive 0.
+const BYTE SS_DRV1EN    = 0x0b; ///< Engage drive 1.
+const BYTE SS_Q6L       = 0x0c; ///< Strobe data latch for I/O.
+const BYTE SS_Q6H       = 0x0d; ///< Load data latch.
+const BYTE SS_Q7L       = 0x0e; ///< Prepare latch for output.
+const BYTE SS_Q7H       = 0x0f; ///< Prepare latch for input.
+///@}
 
-BYTE drive_motor(BYTE port, bool read, BYTE value)
+
+BYTE drive_motor(BYTE switch_no, bool read, BYTE value)
 {
-    if (port == 0xE8)
+    if (SS_MOTOROFF == switch_no)
         drive->motor_on = false;
     else 
         drive->motor_on = true;
@@ -79,20 +61,20 @@ BYTE drive_motor(BYTE port, bool read, BYTE value)
     return 0;
 }
 
-BYTE drive_select(BYTE port, bool read, BYTE value)
+BYTE drive_select(BYTE switch_no, bool read, BYTE value)
 {
-    int drive_no = port & 0x01;
+    int drive_no = switch_no & 0x01;
     LOG_INF("Select drive %d.\n", drive_no);
-    LOG_DBG("Port = %x.\n", port);
+    LOG_DBG("Port = %x.\n", switch_no);
     drive = &ddrive[drive_no];
     drive->motor_on = ddrive[drive_no ^ 0x01].motor_on;
     ddrive[drive_no ^ 0x01].motor_on = false;
     return 0;
 }
 
-BYTE phase_switch(BYTE port, bool read, BYTE value)
+BYTE phase_switch(BYTE switch_no, bool read, BYTE value)
 {
-    set_phase(drive, port & 0x07);
+    set_phase(drive, switch_no & 0x07);
     return 0;
 }
 
@@ -101,35 +83,29 @@ BYTE port_data = 0;
 int read_clocks;
 int shifts;
 
-BYTE drive_latches(BYTE port, bool read, BYTE value)
+BYTE drive_latches(BYTE switch_no, bool read, BYTE value)
 {
     struct map_header_t *header;
-    switch (port) {
-    case STROBE_DATA_LATCH:
+    
+    if (SS_Q6L == switch_no) {
         drive->strobe = true;
         value = drive->rw_latch;
-        break;
-
-    case INPUT_LATCH:
+    } else if (SS_Q7L == switch_no) {
         drive->read_mode = true;
         value = drive->rw_latch;
         LOG_INF("Prepared for input.\n");
-        break;
-
-    case OUTPUT_LATCH:
+    } else if (SS_Q7H == switch_no) {
         drive->read_mode = false;
         drive->rw_latch = value;
         LOG_INF("Prepared for output.\n");
         return 0;
-
-    case LOAD_DATA_LATCH:
+    } else {
         if (drive->read_mode) {
             header = (struct map_header_t *) drive->map->header;
             drive->rw_latch = header->write_protected? 0x80 : 0x00;
         } else {
             drive->rw_latch = value;
         }
-        break;
     } 
 
     return value;
@@ -185,6 +161,44 @@ void drive_clock(BYTE cpu_clocks)
     }
 }
 
+/**
+ * @name Initialization and Configuration
+ * @{
+ */
+
+char *disk_1_mapfile = NULL;
+char *disk_2_mapfile = NULL;
+int slot_no;
+
+/**
+ * Read disk configuration from markII.cfg.
+ */
+bool load_disk_config()
+{
+    disk_1_mapfile = get_config_string("DISKII", "DISK_1_MAPFILE");
+    if (disk_1_mapfile == NULL) {
+        LOG_ERR("Could not find DISK_1_MAPFILE.\n");
+        return false;
+    }
+
+    disk_2_mapfile = get_config_string("DISKII", "DISK_2_MAPFILE");
+    if (disk_2_mapfile == NULL) {
+        LOG_ERR("Could not find DISK_2_MAPFILE.\n");
+        return false;
+    }
+
+    slot_no = get_config_int("DISKII", "SLOT_NUMBER");
+    if (0 == slot_no)
+        slot_no = 6;
+    LOG_INF("Disk II slot number is %d.\n", slot_no);
+    
+    return true;
+}
+
+/**
+ * Initialize drive
+ * @param[in] drive_no Number of drive
+ */
 void init_drive(int drive_no)
 {
     init_steppers(&ddrive[drive_no]);
@@ -195,16 +209,15 @@ void init_drive(int drive_no)
     ddrive[drive_no].read_mode = true;
 }
 
-void set_port(BYTE switch_no, soft_switch_accessor_t accessor,
-    soft_switch_accessor_t dummy)
-{
-    install_slot_switch(switch_no, SS_RDWR, accessor);
-}
-
+/**
+ * Configure. Setup slot ROM.  Initialize drives. Set switches. Load
+ * disk maps.
+ */
 void init_disk()
 {
     char *boot_ROM_name = get_config_string("DISKII", "BOOT_ROM");
     BYTE *boot_ROM = load_ROM(boot_ROM_name, 1);
+    BYTE ss_phase;
     
     LOG_INF("Init DiskII...\n");
     if (!load_disk_config()) {
@@ -218,22 +231,18 @@ void init_disk()
     init_drive(1);
 
     // Set up switches
-    set_port(PHASE_0_OFF, phase_switch, phase_switch);
-    set_port(PHASE_0_ON, phase_switch, phase_switch);
-    set_port(PHASE_1_OFF, phase_switch, phase_switch);
-    set_port(PHASE_1_ON, phase_switch, phase_switch);
-    set_port(PHASE_2_OFF, phase_switch, phase_switch);
-    set_port(PHASE_2_ON, phase_switch, phase_switch);
-    set_port(PHASE_3_OFF, phase_switch, phase_switch);
-    set_port(PHASE_3_ON, phase_switch, phase_switch);
-    set_port(DRIVE_MOTOR_OFF, drive_motor, drive_motor);
-    set_port(DRIVE_MOTOR_ON, drive_motor, drive_motor);
-    set_port(DRIVE_0_ENGAGE, drive_select, drive_select);
-    set_port(DRIVE_1_ENGAGE, drive_select, drive_select);
-    set_port(STROBE_DATA_LATCH, drive_latches, drive_latches);
-    set_port(LOAD_DATA_LATCH, drive_latches, drive_latches);
-    set_port(INPUT_LATCH, drive_latches, drive_latches);
-    set_port(OUTPUT_LATCH, drive_latches, drive_latches);
+    for (ss_phase = SS_PHASE0OFF; ss_phase <= SS_PHASE3ON; ++ss_phase)
+        install_slot_switch(ss_phase, SS_RDWR, phase_switch);
+    
+    install_slot_switch(SS_MOTOROFF, SS_RDWR, drive_motor);
+    install_slot_switch(SS_MOTORON, SS_RDWR, drive_motor);
+    install_slot_switch(SS_DRV0EN, SS_RDWR, drive_select);
+    install_slot_switch(SS_DRV1EN, SS_RDWR, drive_select);
+
+    install_slot_switch(SS_Q6L, SS_RDWR, drive_latches);
+    install_slot_switch(SS_Q6H, SS_RDWR, drive_latches);
+    install_slot_switch(SS_Q7L, SS_RDWR, drive_latches);
+    install_slot_switch(SS_Q7H, SS_RDWR, drive_latches);
 
     load_disk(&ddrive[0], disk_1_mapfile);
     load_disk(&ddrive[1], disk_2_mapfile);
@@ -241,12 +250,19 @@ void init_disk()
     add_device(drive_clock);
 }
 
+/**
+ * Unload disk maps.
+ */
 void finalize_disk()
 {
     unload_disk(&ddrive[0]);
     unload_disk(&ddrive[1]);
 }
 
+/**
+ * Get drive data.
+ * @param[in] drive_no Drive number.
+ */
 struct drive_t *get_drive(int drive_no)
 {
     struct drive_t *drive = NULL;
@@ -258,3 +274,6 @@ struct drive_t *get_drive(int drive_no)
          
     return drive;
 }
+
+/*@}*/
+

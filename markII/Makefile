@@ -43,6 +43,7 @@ all : build_libs $(EXE)
 build_libs :
 	$(MAKE) -C ../shell
 	$(MAKE) -C ../6502_cpu
+	$(MAKE) -C Stuff
    
 .SECONDARY :
  
@@ -52,7 +53,7 @@ clean :
 	$(MAKE) -C ../shell clean
 	$(MAKE) -C ../6502_cpu clean
 
-$(EXE) : $(EXE_OBJS) $(LIB) ../lib/libshell.a
+$(EXE) : build_libs $(EXE_OBJS)
 	$(CC) $(LFLAGS) $(EXE_OBJS) $(EXE_LIBS) -o $(EXE)
 
 %.o : %.c
