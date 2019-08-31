@@ -56,6 +56,7 @@ BYTE my_accessor(WORD address, bool read, BYTE value)
 static void load_ram()
 {
     int fd;
+    struct stat sb;
 
     // Open RAM file and map it...
     fd = open("ram.bin", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
@@ -64,12 +65,30 @@ static void load_ram()
         exit(1);
     }
 
+    if (-1 == fstat(fd, &sb)) {
+        printf("Could not determine size of file.\n");
+        exit(1);
+    }
+
+    if (ram_size > sb.st_size) {
+        printf("Generating new RAM file.\n");
+        ram = malloc(ram_size);
+        memset(ram, 0, ram_size);
+        if (-1 == write(fd, ram, ram_size)) {
+            printf("Unable to generate new RAM files.\n");
+            exit(1);
+        }
+        free(ram);
+    }
+
     ram = mmap(NULL, ram_size, PROT_READ | PROT_WRITE, 
         MAP_SHARED, fd, 0);
     if (MAP_FAILED == ram) {
         printf("Error %d mapping RAM file.\n", errno);
         exit(1);
     }
+    
+    close(fd);
 
 }
 
