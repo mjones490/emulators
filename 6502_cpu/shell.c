@@ -92,6 +92,51 @@ static void load_ram()
 
 }
 
+static void load_image(char* file_name, WORD address)
+{
+    int fd;
+    struct stat sb;
+    int bytes_read;
+
+    // Open file
+    fd = open(file_name, O_RDONLY);
+    if (-1 == fd) {
+        printf("Error opening file %s.\n", file_name);
+        return;
+    }
+
+    if (-1 == fstat(fd, &sb)) {
+        printf("Could not determine size of file.\n");
+        close(fd);
+        return;
+    }    
+
+    bytes_read = read(fd, &ram[address], sb.st_size);
+    printf("%d bytes read.\n", bytes_read);
+    close(fd);
+    return;
+}
+
+static int load(int argc, char **argv)
+{
+    WORD address;
+    char* filename;
+
+    if (3 > argc) {
+        printf("load addr filename\n");
+        return 0;
+    }
+
+    if (1 != sscanf(argv[1], "%4x", &address)) {
+        printf("Invalid load address.\n");
+    }
+
+    filename = argv[2];
+    load_image(filename, address);
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     load_ram();
@@ -100,6 +145,7 @@ int main(int argc, char **argv)
     shell_set_accessor(my_accessor);
     shell_set_loop_cb(cycle);
     shell_initialize("shell");
+    shell_add_command("load", "Load a binary file the given address.", load, false);
     cpu_shell_load_commands();
     cpu_set_signal(SIG_HALT);
     shell_loop();
