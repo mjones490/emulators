@@ -4,7 +4,7 @@
 #include "instructions.h"
 #include "modes.h"
 
-struct instruction_desc_t instruction_desc[NMONIC_COUNT + 1];
+struct instruction_desc_t instruction_desc[MNEMONIC_COUNT + 1];
 struct instruction_t instruction[256];
 
 static WORD address;
@@ -77,8 +77,8 @@ static inline void add()
 
 //----------------------------------------
 // Instructions
-#define INSTRUCTION(nmonic) \
-    static void __ ## nmonic()
+#define INSTRUCTION(mnemonic) \
+    static void __ ## mnemonic()
 
 INSTRUCTION(ADC)
 {
@@ -433,11 +433,11 @@ INSTRUCTION(TYA)
     test_result(regs.A);
 }
 
-static void set_instruction(enum NMONIC nmonic, char* name, 
+static void set_instruction(enum MNEMONIC mnemonic, char* name, 
     void (*handler)(void))
 {
-    strncpy(instruction_desc[nmonic].name, name, 3);
-    instruction_desc[nmonic].handler = handler;
+    strncpy(instruction_desc[mnemonic].name, name, 3);
+    instruction_desc[mnemonic].handler = handler;
 }
 
 /**
@@ -446,17 +446,17 @@ static void set_instruction(enum NMONIC nmonic, char* name,
  * @param[in] code Op code
  * @param[in] map  Map 
  */
-void set_map(BYTE code, enum NMONIC nmonic, BYTE size, 
+void set_map(BYTE code, enum MNEMONIC mnemonic, BYTE size, 
     enum ADDRESS_MODE mode, BYTE clocks)
 {
-    instruction[code].nmonic = nmonic;
+    instruction[code].mnemonic = mnemonic;
     instruction[code].size = size;
     instruction[code].mode = mode;
     instruction[code].clocks = clocks;
 }
 
-#define SET_INSTRUCTION(nmonic) \
-    set_instruction(nmonic, #nmonic, __ ## nmonic)
+#define SET_INSTRUCTION(mnemonic) \
+    set_instruction(mnemonic, #mnemonic, __ ## mnemonic)
      
 void init_instructions()
 {

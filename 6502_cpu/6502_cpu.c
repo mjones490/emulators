@@ -67,9 +67,9 @@ WORD cpu_get_prev_PC()
     return cpu_state.prev_PC;
 }
 
-enum NMONIC cpu_get_nmonic(BYTE code)
+enum MNEMONIC cpu_get_mnemonic(BYTE code)
 {
-    return instruction[code].nmonic;
+    return instruction[code].mnemonic;
 }
 
 enum ADDRESS_MODE cpu_get_address_mode(BYTE code)

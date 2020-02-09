@@ -20,7 +20,7 @@ BYTE exec_instruction(BYTE code)
 {    
     running.instruction = &instruction[code];
     running.descripter = 
-        &instruction_desc[running.instruction->nmonic];
+        &instruction_desc[running.instruction->mnemonic];
 
     if (NULL != running.descripter->handler) {
         running.op_mode = running.instruction->mode;

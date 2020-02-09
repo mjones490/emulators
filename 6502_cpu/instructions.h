@@ -21,19 +21,19 @@ struct instruction_desc_t {
 
 
 struct instruction_t {
-    enum NMONIC         nmonic;
+    enum MNEMONIC         mnemonic;
     BYTE                size;
     enum ADDRESS_MODE   mode;
     BYTE                clocks;
 };
 
 // This table is keyed on op code, and describes that
-// specific code, such as nmonic, size, mode, etc.
+// specific code, such as mnemonic, size, mode, etc.
 extern struct instruction_t instruction[256];
 
-// This table is key on nmonic, and describes that
+// This table is key on mnemonic, and describes that
 // instruction.
-extern struct instruction_desc_t instruction_desc[NMONIC_COUNT + 1];
+extern struct instruction_desc_t instruction_desc[MNEMONIC_COUNT + 1];
 
 // For example, to get op code 0x0E, look up that code in the
 // instruction table.
