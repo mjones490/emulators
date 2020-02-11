@@ -31,20 +31,35 @@ const int ram_size = 8192;
 BYTE *ram;
 BYTE vectors[] = {0x40, 0x10, 0x00, 0x12, 0x00, 0x10};
 
-BYTE my_accessor(WORD address, bool read, BYTE value)
+int fifo_out_fd = -1;
+int fifo_in_fd = -1;
+
+BYTE my_accessor(WORD address, bool read_byte, BYTE value)
 {
-    if (address == 0xfff8) {
-        printf("%c", value);
-        fflush(stdout);
-        return value;
-    } 
+    char buf[2];
     
+    if (address == 0xfff8) {
+        buf[0] = value;
+        buf[1] = 0;
+        if (fifo_out_fd == -1)
+            fifo_out_fd = open("tmp_fifo_out", O_WRONLY | O_NONBLOCK);
+        write(fifo_out_fd, buf, 2); 
+        return value;
+    }
+
+    if (read_byte && address == 0xfff9) {
+        if (fifo_in_fd == -1)
+            fifo_in_fd = open("tmp_fifo_in", O_RDONLY | O_NONBLOCK);
+        read(fifo_in_fd, buf, 2);
+        return buf[0];
+    }
+
     if (address >= 0xfffa) 
         return vectors[address - 0xfffa];
 
     if (address >= ram_size)
         return 0x00;
-    if (read) {
+    if (read_byte) {
         value = ram[address];
     } else {
         ram[address] = value;
@@ -139,6 +154,9 @@ static int load(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+    mkfifo("tmp_fifo_out", 0666);
+    mkfifo("tmp_fifo_in", 0666);
+        
     load_ram();
     cpu_init(my_accessor);
 
@@ -151,5 +169,7 @@ int main(int argc, char **argv)
     shell_loop();
     shell_finalize();
     printf("\n");
+    close(fifo_out_fd);
+    close(fifo_in_fd);
     return 0;
 }

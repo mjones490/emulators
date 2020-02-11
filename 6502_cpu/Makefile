@@ -4,9 +4,11 @@ LIB_OBJS := 6502_cpu control init instructions modes
 SHELL_LIB = 6502_shell
 SHELL_LIB_OBJS = 6502_shell_commands
 
-EXE := shell
-EXE_OBJS := shell 6502_shell_commands
-EXE_LIBS := 6502 shell readline
+SHELL_EXE := shell
+SHELL_EXE_OBJS := shell 6502_shell_commands
+SHELL_EXE_LIBS := 6502 shell readline
+
+TERM_EXE := term
 
 INC_DIR = ../include
 LIB_DIR = ../lib
@@ -16,14 +18,14 @@ LFLAGS = -Wall -L$(LIB_DIR)
 
 CP = cp -v
 
-EXE_OBJS := $(EXE_OBJS:%=%.o)
+SHELL_EXE_OBJS := $(SHELL_EXE_OBJS:%=%.o)
 LIB := $(LIB:%=lib%.a)
 LIB_OBJS := $(LIB_OBJS:%=%.o)
 SHELL_LIB := $(SHELL_LIB:%=lib%.a)
 SHELL_LIB_OBJS := $(SHELL_LIB_OBJS:%=%.o)
-EXE_LIBS := $(EXE_LIBS:%=-l%)
+SHELL_EXE_LIBS := $(SHELL_EXE_LIBS:%=-l%)
 
-all : build_libs $(LIB) $(SHELL_LIB) $(EXE)
+all : build_libs $(LIB) $(SHELL_LIB) $(SHELL_EXE) $(TERM_EXE)
 
 build_libs :
 	cd ../shell && $(MAKE)
@@ -31,12 +33,12 @@ build_libs :
 .SECONDARY :
  
 clean :
-	rm -vf $(EXE_OBJS) $(LIB_OBJS) $(EXE) $(LIB) *.d
+	rm -vf $(SHELL_EXE_OBJS) $(LIB_OBJS) $(SHELL_EXE) $(LIB) $(TERM_EXE) *.d
 	rm -vf $(SHELL_LIB_OBJS) $(SHELL_LIB)
 	cd ../shell && $(MAKE) clean
 
-$(EXE) : $(EXE_OBJS) $(LIB) ../lib/libshell.a
-	$(CC) $(LFLAGS) $(EXE_OBJS) $(EXE_LIBS) -o $(EXE)
+$(SHELL_EXE) : $(SHELL_EXE_OBJS) $(LIB) ../lib/libshell.a
+	$(CC) $(LFLAGS) $(SHELL_EXE_OBJS) $(SHELL_EXE_LIBS) -o $(SHELL_EXE)
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c $< -o $@
