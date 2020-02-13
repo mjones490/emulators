@@ -9,153 +9,8 @@
 #include <errno.h>
 #include <malloc.h>
 #include "shell.h"
-
-union regs_t {
-    struct {
-        BYTE PSW;
-        BYTE A;
-        BYTE C;
-        BYTE B;
-        BYTE E;
-        BYTE D;
-        BYTE L;
-        BYTE H;
-        BYTE SPL;
-        BYTE SPH;
-        BYTE PCL;
-        BYTE PCH;
-    } b;
-    struct {
-        WORD PSWA;
-        WORD BC;
-        WORD DE;
-        WORD HL;
-        WORD SP;
-        WORD PC;
-    } w;
-};
-
-union regs_t regs;
-
-void cpu_set_reg_A(BYTE value) 
-{
-    regs.b.A = value;
-}
-
-BYTE cpu_get_reg_A()
-{
-    return regs.b.A;
-}
-
-void cpu_set_reg_B(BYTE value) 
-{
-    regs.b.B = value;
-}
-
-BYTE cpu_get_reg_B()
-{
-    return regs.b.B;
-}
-
-void cpu_set_reg_C(BYTE value) 
-{
-    regs.b.C = value;
-}
-
-BYTE cpu_get_reg_C()
-{
-    return regs.b.C;
-}
-
-void cpu_set_reg_BC(WORD value) 
-{
-    regs.w.BC = value;
-}
-
-WORD cpu_get_reg_BC()
-{
-    return regs.w.BC;
-}
-
-void cpu_set_reg_D(BYTE value) 
-{
-    regs.b.D = value;
-}
-
-BYTE cpu_get_reg_D()
-{
-    return regs.b.D;
-}
-
-void cpu_set_reg_E(BYTE value) 
-{
-    regs.b.E = value;
-}
-
-BYTE cpu_get_reg_E()
-{
-    return regs.b.E;
-}
-
-void cpu_set_reg_DE(WORD value) 
-{
-    regs.w.DE = value;
-}
-
-WORD cpu_get_reg_DE()
-{
-    return regs.w.DE;
-}
-
-void cpu_set_reg_H(BYTE value) 
-{
-    regs.b.H = value;
-}
-
-BYTE cpu_get_reg_H()
-{
-    return regs.b.H;
-}
-
-void cpu_set_reg_L(BYTE value) 
-{
-    regs.b.L = value;
-}
-
-BYTE cpu_get_reg_L()
-{
-    return regs.b.L;
-}
-
-void cpu_set_reg_HL(WORD value) 
-{
-    regs.w.HL = value;
-}
-
-WORD cpu_get_reg_HL()
-{
-    return regs.w.HL;
-}
-
-void cpu_set_reg_SP(WORD value) 
-{
-    regs.w.SP = value;
-}
-
-WORD cpu_get_reg_SP()
-{
-    return regs.w.SP;
-}
-
-void cpu_set_reg_PC(WORD value) 
-{
-    regs.w.PC = value;
-}
-
-WORD cpu_get_reg_PC()
-{
-    return regs.w.PC;
-}
+#include "8080_cpu.h"
+#include "cpu_types.h"
 
 const int ram_size = 8192;
 
@@ -230,9 +85,17 @@ static int registers(int argc, char **argv)
     return 0;
 }
 
+static int step()
+{
+    cpu_execute_instruction();
+    show_registers();
+    return 0;
+}
+
 void cpu_shell_load_commands()
 {
     shell_add_command("registers", "View/change 8080 registers.", registers, false);
+    shell_add_command("step", "Execute single instruction.", step, true);
 }
 
 int main(int argc, char **argv)
@@ -240,6 +103,7 @@ int main(int argc, char **argv)
     ram = malloc(ram_size);
     shell_set_accessor(my_accessor);
     shell_initialize("8080 shell");
+    cpu_init(my_accessor);
     cpu_shell_load_commands();
     shell_loop();
     shell_finalize();
