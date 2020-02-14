@@ -15,7 +15,7 @@ clean :
 	rm -vf shell *.o *.d 
 	cd ../shell && $(MAKE) clean
 
-shell : 8080_cpu.o shell.o control.o init.o ../lib/libshell.a
+shell : 8080_cpu.o shell.o control.o init.o instructions.o ../lib/libshell.a
 	$(CC) $(LFLAGS) $^ -lshell -lreadline -o $@
 
 %.o : %.c

@@ -32,6 +32,7 @@ union regs_t {
 struct cpu_state_t {
     accessor_t bus;
     union regs_t* regs;
+    BYTE code;
 };
 
 extern union regs_t regs;
