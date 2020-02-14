@@ -1,6 +1,7 @@
 #include "instructions.h"
 
 BYTE *reg_op[] = { &regs.b.B, &regs.b.C, &regs.b.D, &regs.b.E, &regs.b.H, &regs.b.L, NULL, &regs.b.A }; 
+WORD *reg_pair[] = { &regs.w.BC, &regs.w.DE, &regs.w.HL, &regs.w.SP };
 
 static inline BYTE get_source() 
 {
@@ -15,6 +16,17 @@ static inline void put_dest(BYTE value)
         put_byte(regs.w.HL, value);
     else
         *ddd = value;
+}
+
+static inline WORD get_reg_pair()
+{
+    WORD *rp = reg_pair[(cpu_state.code >> 4) & 0b11];
+    return *rp;
+}
+
+static inline void set_reg_pair(WORD value)
+{
+    *reg_pair[(cpu_state.code >> 4) & 0b11] = value;
 }
 
 #define INSTRUCTION(mnemonic) \
@@ -35,6 +47,21 @@ INSTRUCTION(HALT)
     printf("Halt!\n");
 }
 
+INSTRUCTION(LXI)
+{
+    set_reg_pair(get_next_word());
+}
+
+INSTRUCTION(LDA)
+{
+    regs.b.A = get_byte(get_next_word());
+}
+
+INSTRUCTION(STA)
+{
+    put_byte(get_next_word(), regs.b.A);
+}
+
 #define INSTRUCTION_DEF(mnemonic, code, start, end, step) \
     { __ ## mnemonic, #mnemonic, code, start, end, step }
 
@@ -42,6 +69,9 @@ struct instruction_t *instruction_map[256];
 struct instruction_t instruction[] = {
     INSTRUCTION_DEF( MOV, 0x40, 0x37, 0x75, 0x01 ),
     INSTRUCTION_DEF( MVI, 0x06, 0x00, 0x38, 0x08 ),
+    INSTRUCTION_DEF( LXI, 0x01, 0x00, 0x30, 0x10 ),
+    INSTRUCTION_DEF( LDA, 0x3a, 0x00, 0x00, 0x00 ),
+    INSTRUCTION_DEF( STA, 0x32, 0x00, 0x00, 0x00 ),
     INSTRUCTION_DEF( HALT, 0x76, 0x00, 0x00, 0x00 )
 };
 
