@@ -42,11 +42,6 @@ INSTRUCTION(MVI)
     put_dest(get_next_byte());
 }
 
-INSTRUCTION(HALT)
-{
-    printf("Halt!\n");
-}
-
 INSTRUCTION(LXI)
 {
     set_reg_pair(get_next_word());
@@ -62,6 +57,21 @@ INSTRUCTION(STA)
     put_byte(get_next_word(), regs.b.A);
 }
 
+INSTRUCTION(LDAX)
+{
+    regs.b.A = get_byte(get_reg_pair());
+}
+
+INSTRUCTION(STAX)
+{
+    put_byte(get_reg_pair(), regs.b.A);
+}
+
+INSTRUCTION(HALT)
+{
+    printf("Halt!\n");
+}
+
 #define INSTRUCTION_DEF(mnemonic, code, start, end, step) \
     { __ ## mnemonic, #mnemonic, code, start, end, step }
 
@@ -72,6 +82,8 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( LXI, 0x01, 0x00, 0x30, 0x10 ),
     INSTRUCTION_DEF( LDA, 0x3a, 0x00, 0x00, 0x00 ),
     INSTRUCTION_DEF( STA, 0x32, 0x00, 0x00, 0x00 ),
+    INSTRUCTION_DEF( LDAX, 0x0a, 0x00, 0x10, 0x10 ),
+    INSTRUCTION_DEF( STAX, 0x02, 0x00, 0x10, 0x10 ),
     INSTRUCTION_DEF( HALT, 0x76, 0x00, 0x00, 0x00 )
 };
 
