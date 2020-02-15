@@ -55,6 +55,14 @@ static inline WORD get_word(WORD address)
     return regs.w.XY;
 }
 
+static inline WORD put_word(WORD address, WORD value)
+{
+    regs.w.XY = value;
+    put_byte(address, regs.b.Y);
+    put_byte(address + 1, regs.b.X);
+    return value;
+}
+
 static inline BYTE get_next_byte()
 {
     return get_byte(regs.w.PC++);

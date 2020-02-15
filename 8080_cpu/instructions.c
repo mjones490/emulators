@@ -32,6 +32,10 @@ static inline void set_reg_pair(WORD value)
 #define INSTRUCTION(mnemonic) \
     static void __ ## mnemonic()
 
+INSTRUCTION(NOP)
+{
+}
+
 INSTRUCTION(MOV)
 {
     put_dest(get_source());
@@ -57,6 +61,16 @@ INSTRUCTION(STA)
     put_byte(get_next_word(), regs.b.A);
 }
 
+INSTRUCTION(LHLD)
+{
+    regs.w.HL = get_word(get_next_word());
+}
+
+INSTRUCTION(SHLD)
+{
+    put_word(get_next_word(), regs.w.HL);
+}
+
 INSTRUCTION(LDAX)
 {
     regs.b.A = get_byte(get_reg_pair());
@@ -72,19 +86,29 @@ INSTRUCTION(HALT)
     printf("Halt!\n");
 }
 
-#define INSTRUCTION_DEF(mnemonic, code, start, end, step) \
-    { __ ## mnemonic, #mnemonic, code, start, end, step }
+#define DDDSSS 0x37, 0x75, 0x01
+#define DI     0x00, 0x38, 0x08
+#define RPI    0x00, 0x30, 0x10
+#define ADDR   0x00, 0x00, 0x00
+#define BCDE   0x00, 0x10, 0x10
+#define IMP    0x00, 0x00, 0x00
+
+#define INSTRUCTION_DEF(mnemonic, code, args) \
+    { __ ## mnemonic, #mnemonic, #args, code, args }
 
 struct instruction_t *instruction_map[256];
 struct instruction_t instruction[] = {
-    INSTRUCTION_DEF( MOV, 0x40, 0x37, 0x75, 0x01 ),
-    INSTRUCTION_DEF( MVI, 0x06, 0x00, 0x38, 0x08 ),
-    INSTRUCTION_DEF( LXI, 0x01, 0x00, 0x30, 0x10 ),
-    INSTRUCTION_DEF( LDA, 0x3a, 0x00, 0x00, 0x00 ),
-    INSTRUCTION_DEF( STA, 0x32, 0x00, 0x00, 0x00 ),
-    INSTRUCTION_DEF( LDAX, 0x0a, 0x00, 0x10, 0x10 ),
-    INSTRUCTION_DEF( STAX, 0x02, 0x00, 0x10, 0x10 ),
-    INSTRUCTION_DEF( HALT, 0x76, 0x00, 0x00, 0x00 )
+    INSTRUCTION_DEF( NOP, 0x00, IMP ),
+    INSTRUCTION_DEF( MOV, 0x40, DDDSSS),
+    INSTRUCTION_DEF( MVI, 0x06, DI ),
+    INSTRUCTION_DEF( LXI, 0x01, RPI ),
+    INSTRUCTION_DEF( LDA, 0x3a, ADDR ),
+    INSTRUCTION_DEF( STA, 0x32, ADDR ),
+    INSTRUCTION_DEF( LHLD, 0x2a, ADDR ),
+    INSTRUCTION_DEF( SHLD, 0x22, ADDR ),
+    INSTRUCTION_DEF( LDAX, 0x0a, BCDE ),
+    INSTRUCTION_DEF( STAX, 0x02, BCDE ),
+    INSTRUCTION_DEF( HALT, 0x76, IMP )
 };
 
 
@@ -100,7 +124,8 @@ void map_instructions()
     } while (++map_code);
     
     for (instruction_num = 0; instruction_num < instruction_count; ++instruction_num) {
-        printf("Setting instruction %s : ", instruction[instruction_num].mnemonic);
+        printf("Setting instruction %s %s: ", instruction[instruction_num].mnemonic, 
+            instruction[instruction_num].args);
         for (reg_count = instruction[instruction_num].start; 
             reg_count <= instruction[instruction_num].end;
             reg_count += instruction[instruction_num].step) {

@@ -7,6 +7,7 @@
 struct instruction_t {
     void (*handler)();
     char* mnemonic;
+    char* args;
     BYTE code;
     BYTE start;
     BYTE end;
