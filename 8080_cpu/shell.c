@@ -65,11 +65,13 @@ static WORD disassemble_inst(WORD address)
     } else if (strcmp(inst->args, "DI") == 0) {
         printf("%02x     %s %s,%02xh\n", get_byte(address), mnemonic, reg8[(code >> 3) & 0x07], get_byte(address));
         address++;
+    } else if (strcmp(inst->args, "DDD") == 0) {
+        printf("       %s %s\n", mnemonic, reg8[(code >> 0x03) & 0x07]);
     } else if (strcmp(inst->args, "RPI") == 0) {
         printf("%02x %02x  %s %s,%04xh\n", get_byte(address), get_byte(address + 1), mnemonic, 
             reg16[(code >> 4) & 0x03], get_word(address));
         address += 2;
-    } else if (strcmp(inst->args, "BCDE") == 0) {
+    } else if (strncmp(inst->args, "RP", 2) == 0) {
         printf("       %s %s\n", mnemonic, reg16[(code >> 4) & 0x03]); 
     } else if (strcmp(inst->args, "ADDR") == 0) {
         printf("%02x %02x  %s %04xh\n", get_byte(address), get_byte(address + 1), mnemonic, get_word(address));
@@ -133,10 +135,11 @@ static int registers(int argc, char **argv)
     int tmp;
     WORD value = 0;
     char *reg_name;
+    int arg_no = 1;
 
-    if (argc == 3) {
-        reg_name = argv[1];
-        if (1 == sscanf(argv[2], "%4x", &tmp))
+    while (argc > arg_no) {
+        reg_name = argv[arg_no++];
+        if (1 == sscanf(argv[arg_no++], "%4x", &tmp))
             value = (WORD) tmp;
         if (0 == strncmp(reg_name, "a", 2))
             cpu_set_reg_A(lo(value));
