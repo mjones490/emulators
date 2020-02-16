@@ -1,5 +1,48 @@
 #include "instructions.h"
 
+#define FLAG_S 0b10000000
+#define FLAG_Z 0b01000000
+#define FLAG_A 0b00010000
+#define FLAG_P 0b00000100
+#define FLAG_C 0b00000001
+
+BYTE condition_flag[] = { FLAG_Z, FLAG_C, FLAG_P, FLAG_S };
+
+static inline bool test_flag()
+{
+    BYTE flag = condition_flag[(cpu_state.code >> 4) & 0x03];
+    BYTE compare_state = (cpu_state.code >> 3) & 0x01; 
+    return ((regs.b.PSW & flag) > 0) == compare_state;
+}
+
+static inline void set_flags(BYTE flags)
+{
+    regs.b.PSW |= flags;
+}
+
+static inline void clear_flags(BYTE flags)
+{
+    regs.b.PSW &= ~flags;
+}
+
+static inline void toggle_flags(BYTE flags, bool state)
+{
+    if (state)
+        set_flags(flags);
+    else
+        clear_flags(flags);
+}
+
+static inline void test_result(BYTE result)
+{
+    toggle_flags(FLAG_S, result & 0b10000000);
+    toggle_flags(FLAG_Z, result == 0);
+    BYTE p = result ^ (result >> 1);
+    p ^= p >> 2;
+    p ^= p >> 4;
+    toggle_flags(FLAG_P, !(p & 0b00000001));
+}
+
 BYTE *reg_op[] = { &regs.b.B, &regs.b.C, &regs.b.D, &regs.b.E, &regs.b.H, &regs.b.L, NULL, &regs.b.A }; 
 WORD *reg_pair[] = { &regs.w.BC, &regs.w.DE, &regs.w.HL, &regs.w.SP };
 
@@ -27,12 +70,23 @@ static inline void put_dest(BYTE value)
 static inline WORD get_reg_pair()
 {
     WORD *rp = reg_pair[(cpu_state.code >> 4) & 0b11];
+
+    // If getting SP and PUSHing, return value in PSWA
+    if (rp == &regs.w.SP && cpu_state.code == 0xf5)
+        return regs.w.PSWA;
+
     return *rp;
 }
 
 static inline void set_reg_pair(WORD value)
 {
-    *reg_pair[(cpu_state.code >> 4) & 0b11] = value;
+    WORD *rp = reg_pair[(cpu_state.code >> 4) & 0b11];
+    
+    // If setting SP and POPing, set PSWA
+    if (rp == &regs.w.SP && cpu_state.code == 0xf1)
+        regs.w.PSWA = value;
+    else
+        *rp = value;
 }
 
 #define INSTRUCTION(mnemonic) \
@@ -97,12 +151,14 @@ INSTRUCTION(XCHG)
 INSTRUCTION(INR)
 {
     BYTE value = get_dest() + 1;
+    test_result(value);
     put_dest(value);
 }
 
 INSTRUCTION(DCR)
 {
     BYTE value = get_dest() - 1;
+    test_result(value);
     put_dest(value);
 }
 
@@ -121,6 +177,35 @@ INSTRUCTION(JMP)
     regs.w.PC = get_next_word();
 }
 
+INSTRUCTION(Jccc) 
+{
+    WORD newPC = get_next_word();
+    if (test_flag())
+        regs.w.PC = newPC;
+}
+
+INSTRUCTION(CALL)
+{
+    WORD newPC = get_next_word();
+    push_word(regs.w.PC);
+    regs.w.PC = newPC;
+}
+
+INSTRUCTION(RET)
+{
+    regs.w.PC = pop_word();
+}
+
+INSTRUCTION(PUSH)
+{
+    push_word(get_reg_pair());
+}
+
+INSTRUCTION(POP)
+{
+    set_reg_pair(pop_word());
+}
+
 INSTRUCTION(HALT)
 {
     printf("Halt!\n");
@@ -134,6 +219,7 @@ INSTRUCTION(HALT)
 #define RP      0x00, 0x30, 0x10
 #define RPBD    0x00, 0x10, 0x10
 #define IMP     0x00, 0x00, 0x00
+#define CCC     0x00, 0x38, 0x08
 
 #define INSTRUCTION_DEF(mnemonic, code, args) \
     { __ ## mnemonic, #mnemonic, #args, code, args }
@@ -156,6 +242,11 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( INX, 0x03, RP ),
     INSTRUCTION_DEF( DCX, 0x0b, RP ),
     INSTRUCTION_DEF( JMP, 0xc3, ADDR ),
+    INSTRUCTION_DEF( Jccc, 0xc2, CCC ),
+    INSTRUCTION_DEF( CALL, 0x0d, ADDR ),
+    INSTRUCTION_DEF( RET, 0xc9, IMP ),
+    INSTRUCTION_DEF( PUSH, 0xC5, RP ),
+    INSTRUCTION_DEF( POP, 0xC1, RP ),
     INSTRUCTION_DEF( HALT, 0x76, IMP )
 };
 

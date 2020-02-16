@@ -75,4 +75,18 @@ static inline WORD get_next_word()
     return regs.w.XY;
 }
 
+static inline WORD push_word(WORD value)
+{
+    regs.w.SP -= 2;
+    put_word(regs.w.SP, value);
+    return value;
+}
+
+static inline WORD pop_word()
+{
+    regs.w.XY = get_word(regs.w.SP);
+    regs.w.SP += 2;
+    return regs.w.XY;
+}
+
 #endif // __CPU_TYPES_H

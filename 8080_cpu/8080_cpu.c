@@ -121,3 +121,7 @@ WORD cpu_get_reg_PC()
     return regs.w.PC;
 }
 
+BYTE cpu_get_reg_PSW()
+{
+    return regs.b.PSW;
+}

@@ -29,7 +29,7 @@ void cpu_set_reg_SP(WORD value);
 WORD cpu_get_reg_SP();
 void cpu_set_reg_PC(WORD value); 
 WORD cpu_get_reg_PC();
-
+BYTE cpu_get_reg_PSW();
 void cpu_init(accessor_t bus);
 BYTE cpu_execute_instruction();
 

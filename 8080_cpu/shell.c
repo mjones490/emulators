@@ -34,13 +34,15 @@ BYTE my_accessor(WORD address, bool read_byte, BYTE value)
    Disassemble command
  **********************************************/
 char *reg8[] = { "b", "c", "d", "e", "h", "l", "m", "a" };
-char *reg16[] = { "bc", "de", "hl", "sp" };
+char *reg16[] = { "bc", "de", "hl", "sp", "psw" };
+char *condition[] = { "nz", "z ", "nc", "c ", "po", "pe", "p ", "m " };
 
 static WORD disassemble_inst(WORD address)
 {
     BYTE code;
     char mnemonic[5];
     struct instruction_t *inst;
+    
     int i = 0;
 
     printf("%04x: ", address);
@@ -72,9 +74,14 @@ static WORD disassemble_inst(WORD address)
             reg16[(code >> 4) & 0x03], get_word(address));
         address += 2;
     } else if (strncmp(inst->args, "RP", 2) == 0) {
-        printf("       %s %s\n", mnemonic, reg16[(code >> 4) & 0x03]); 
+        i = (code == 0xf1 || code == 0xf5)? 1 : 0;
+        printf("       %s %s\n", mnemonic, reg16[((code >> 4) & 0x03) + i]); 
     } else if (strcmp(inst->args, "ADDR") == 0) {
         printf("%02x %02x  %s %04xh\n", get_byte(address), get_byte(address + 1), mnemonic, get_word(address));
+        address += 2;
+    } else if (strcmp(inst->args, "CCC") == 0) {
+        printf("%02x %02x  %c%s %04xh\n", get_byte(address), get_byte(address + 1),  mnemonic[0], 
+            condition[(code >> 3) & 0x07], get_word(address));
         address += 2;
     } else {
         printf("\n");
@@ -125,7 +132,8 @@ static void show_registers()
     printf("e = %02x ", cpu_get_reg_E());
     printf("hl = %04x ", cpu_get_reg_HL());
     printf("sp = %04x ", cpu_get_reg_SP());
-    printf("pc = %04X ", cpu_get_reg_PC());
+    printf("pc = %04x ", cpu_get_reg_PC());
+    printf("psw = %02x ", cpu_get_reg_PSW());
     printf("\n");
     disassemble_inst(cpu_get_reg_PC());
 }
