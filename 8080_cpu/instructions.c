@@ -33,6 +33,11 @@ static inline void toggle_flags(BYTE flags, bool state)
         clear_flags(flags);
 }
 
+static inline BYTE are_set(BYTE flags)
+{
+    return regs.b.PSW & flags;
+}
+
 static inline void test_result(BYTE result)
 {
     toggle_flags(FLAG_S, result & 0b10000000);
@@ -172,6 +177,32 @@ INSTRUCTION(DCX)
     set_reg_pair(get_reg_pair() - 1);
 }
 
+INSTRUCTION(RLC)
+{
+    toggle_flags(FLAG_C, regs.b.A & 0x80);
+    regs.b.A = (regs.b.A << 1) + (are_set(FLAG_C)? 0x01 : 0x00);
+}
+
+INSTRUCTION(RRC)
+{
+    toggle_flags(FLAG_C, regs.b.A & 0x01);
+    regs.b.A = (regs.b.A >> 1) + (are_set(FLAG_C)? 0x80 : 0x00); 
+}
+
+INSTRUCTION(RAL)
+{
+    BYTE carry = are_set(FLAG_C);
+    toggle_flags(FLAG_C, regs.b.A & 0x80);
+    regs.b.A = (regs.b.A << 1) + (carry? 0x01 : 0x00);
+}
+
+INSTRUCTION(RAR)
+{
+    BYTE carry = are_set(FLAG_C);
+    toggle_flags(FLAG_C, regs.b.A & 0x01);
+    regs.b.A = (regs.b.A >> 1) + (carry? 0x80 : 0x00);
+}
+
 INSTRUCTION(JMP)
 {
     regs.w.PC = get_next_word();
@@ -241,6 +272,10 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( DCR, 0x05, DDD ),
     INSTRUCTION_DEF( INX, 0x03, RP ),
     INSTRUCTION_DEF( DCX, 0x0b, RP ),
+    INSTRUCTION_DEF( RLC, 0x07, IMP ),
+    INSTRUCTION_DEF( RRC, 0x0f, IMP ),
+    INSTRUCTION_DEF( RAL, 0x17, IMP ),
+    INSTRUCTION_DEF( RAR, 0x1f, IMP ),
     INSTRUCTION_DEF( JMP, 0xc3, ADDR ),
     INSTRUCTION_DEF( Jccc, 0xc2, CCC ),
     INSTRUCTION_DEF( CALL, 0x0d, ADDR ),
