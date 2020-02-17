@@ -4,14 +4,25 @@
 #include "8080_cpu.h"
 #include "cpu_types.h"
 
+enum instruction_type {
+    DDDSSS,
+    DDD,
+    SSS,
+    RP,
+    IMM,
+    DDDIMM,
+    RPIMM,
+    RPBD,
+    ADDR,
+    IMP,
+    CCC
+};
+
 struct instruction_t {
     void (*handler)();
     char* mnemonic;
-    char* args;
+    enum instruction_type inst_type;
     BYTE code;
-    BYTE start;
-    BYTE end;
-    BYTE step;
 };
 
 extern struct instruction_t *instruction_map[256];

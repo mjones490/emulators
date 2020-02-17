@@ -318,27 +318,38 @@ INSTRUCTION(HALT)
     printf("Halt!\n");
 }
 
-#define DDDSSS  0x37, 0x75, 0x01
-#define DDD     0x00, 0x38, 0x08
-#define DI      0x00, 0x38, 0x08 
-#define RPI     0x00, 0x30, 0x10
-#define ADDR    0x00, 0x00, 0x00
-#define RP      0x00, 0x30, 0x10
-#define RPBD    0x00, 0x10, 0x10
-#define IMP     0x00, 0x00, 0x00
-#define CCC     0x00, 0x38, 0x08
-#define I       0x00, 0x00, 0x00
-#define SSS     0x00, 0x07, 0x01
+#define TYPE_DEF(inst_type, start, stop, step) \
+    { #inst_type, inst_type, start, stop, step }
 
-#define INSTRUCTION_DEF(mnemonic, code, args) \
-    { __ ## mnemonic, #mnemonic, #args, code, args }
+struct {
+    char* name;
+    enum instruction_type inst_type;
+    BYTE start;
+    BYTE stop;
+    BYTE step;
+} type_info[] = {
+    TYPE_DEF( DDDSSS,   0x37, 0x75, 0x01 ),
+    TYPE_DEF( DDD,       0x00, 0x38, 0x08 ),
+    TYPE_DEF( SSS,       0x00, 0x07, 0x01 ),
+    TYPE_DEF( RP ,       0x00, 0x30, 0x10 ),
+    TYPE_DEF( IMM,       0x00, 0x00, 0x00 ),
+    TYPE_DEF( DDDIMM,    0x00, 0x38, 0x08 ),
+    TYPE_DEF( RPIMM ,    0x00, 0x30, 0x10 ),
+    TYPE_DEF( RPBD,      0x00, 0x10, 0x10 ),
+    TYPE_DEF( ADDR,      0x00, 0x00, 0x00 ),
+    TYPE_DEF( IMP,       0x00, 0x00, 0x00 ),
+    TYPE_DEF( CCC,       0x00, 0x38, 0x08 )
+};
+
+#define INSTRUCTION_DEF(mnemonic, code, inst_type ) \
+    { __ ## mnemonic, #mnemonic, inst_type, code }
 
 struct instruction_t *instruction_map[256];
 struct instruction_t instruction[] = {
     INSTRUCTION_DEF( NOP, 0x00, IMP ),
-    INSTRUCTION_DEF( MOV, 0x40, DDDSSS),
-    INSTRUCTION_DEF( MVI, 0x06, DI ),
-    INSTRUCTION_DEF( LXI, 0x01, RPI ),
+    INSTRUCTION_DEF( MOV, 0x40, DDDSSS ),
+    INSTRUCTION_DEF( MVI, 0x06, DDDIMM ),
+    INSTRUCTION_DEF( LXI, 0x01, RPIMM ),
     INSTRUCTION_DEF( LDA, 0x3a, ADDR ),
     INSTRUCTION_DEF( STA, 0x32, ADDR ),
     INSTRUCTION_DEF( LHLD, 0x2a, ADDR ),
@@ -351,13 +362,13 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( INX, 0x03, RP ),
     INSTRUCTION_DEF( DCX, 0x0b, RP ),
     INSTRUCTION_DEF( ANA, 0xa0, SSS ),
-    INSTRUCTION_DEF( ANI, 0xe6, I),
+    INSTRUCTION_DEF( ANI, 0xe6, IMM),
     INSTRUCTION_DEF( ORA, 0xb0, SSS ),
-    INSTRUCTION_DEF( ORI, 0xf6, I),
+    INSTRUCTION_DEF( ORI, 0xf6, IMM),
     INSTRUCTION_DEF( XRA, 0xa8, SSS ),
-    INSTRUCTION_DEF( XRI, 0xee, I),
-    INSTRUCTION_DEF( CMP, 0xb8, SSS),
-    INSTRUCTION_DEF( CPI, 0xfe, I),
+    INSTRUCTION_DEF( XRI, 0xee, IMM ),
+    INSTRUCTION_DEF( CMP, 0xb8, SSS ),
+    INSTRUCTION_DEF( CPI, 0xfe, IMM ),
     INSTRUCTION_DEF( RLC, 0x07, IMP ),
     INSTRUCTION_DEF( RRC, 0x0f, IMP ),
     INSTRUCTION_DEF( RAL, 0x17, IMP ),
@@ -378,6 +389,7 @@ void map_instructions()
 {
     size_t instruction_count = sizeof(instruction) / sizeof(struct instruction_t);
     int instruction_num;
+    int inst_type;
     int reg_count;
     BYTE map_code = 0;
     int total = 0;
@@ -387,16 +399,21 @@ void map_instructions()
     } while (++map_code);
     
     for (instruction_num = 0; instruction_num < instruction_count; ++instruction_num) {
-        printf("Setting instruction %s %s: ", instruction[instruction_num].mnemonic, 
-            instruction[instruction_num].args);
-        for (reg_count = instruction[instruction_num].start; 
-            reg_count <= instruction[instruction_num].end;
-            reg_count += instruction[instruction_num].step) {
+        inst_type = instruction[instruction_num].inst_type;
+        if (type_info[inst_type].inst_type != inst_type) {
+            printf("Fatal: Mismatched instruction types found in initializtion.\n");
+            exit(0);
+        }
+        printf("Setting instruction %s %s: ", instruction[instruction_num].mnemonic,
+            type_info[inst_type].name);
+        for (reg_count = type_info[inst_type].start; 
+            reg_count <= type_info[inst_type].stop;
+            reg_count += type_info[inst_type].step) {
             map_code = instruction[instruction_num].code | reg_count;
             printf("%02x ", map_code);
             instruction_map[map_code] = &instruction[instruction_num];
             total++;
-            if (instruction[instruction_num].step == 0)
+            if (type_info[inst_type].step == 0)
                 break;
         }
         printf("\n");

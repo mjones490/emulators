@@ -60,26 +60,35 @@ static WORD disassemble_inst(WORD address)
         mnemonic[++i] = 0;
     } while (i < 4);
 
-    if(strcmp(inst->args, "IMP") == 0) {
+    switch (inst->inst_type) {
+    case IMP:
         printf("       %s\n", mnemonic);
-    } else if (strcmp(inst->args, "DDDSSS") == 0) {
+        break;
+    case DDDSSS:
         printf("       %s %s,%s\n", mnemonic, reg8[(code >> 3) & 0x07], reg8[(code & 0x07)]);
-    } else if (strcmp(inst->args, "DI") == 0) {
+        break;
+    case DDDIMM:
         printf("%02x     %s %s,%02xh\n", get_byte(address), mnemonic, reg8[(code >> 3) & 0x07], get_byte(address));
         address++;
-    } else if (strcmp(inst->args, "DDD") == 0) {
+        break;
+    case DDD:
         printf("       %s %s\n", mnemonic, reg8[(code >> 0x03) & 0x07]);
-    } else if (strcmp(inst->args, "RPI") == 0) {
+        break;
+    case RPIMM:
         printf("%02x %02x  %s %s,%04xh\n", get_byte(address), get_byte(address + 1), mnemonic, 
             reg16[(code >> 4) & 0x03], get_word(address));
         address += 2;
-    } else if (strncmp(inst->args, "RP", 2) == 0) {
+        break;
+    case RP:
+    case RPBD:
         i = (code == 0xf1 || code == 0xf5)? 1 : 0;
         printf("       %s %s\n", mnemonic, reg16[((code >> 4) & 0x03) + i]); 
-    } else if (strcmp(inst->args, "ADDR") == 0) {
+        break;
+    case ADDR:
         printf("%02x %02x  %s %04xh\n", get_byte(address), get_byte(address + 1), mnemonic, get_word(address));
         address += 2;
-    } else if (strcmp(inst->args, "CCC") == 0) {
+        break;
+    case CCC:
         if (mnemonic[0] == 'r') {
             printf("       r%s\n", condition[(code >> 3) & 0x07]);
         } else {
@@ -87,14 +96,19 @@ static WORD disassemble_inst(WORD address)
                 condition[(code >> 3) & 0x07], get_word(address));
             address += 2;
         }
-    } else if (strcmp(inst->args, "I") == 0) {
+        break;
+    case IMM:
         printf("%02x     %s %02xh\n", get_byte(address), mnemonic, get_byte(address));
         address++;
-    } else if (strcmp(inst->args, "SSS") == 0) {
+        break;
+    case SSS:
         printf("       %s %s\n", mnemonic, reg8[code & 0x07]);
-    } else {
+        break;
+    default:
         printf("\n");
+        break;
     }
+
     return address;
 
 }
