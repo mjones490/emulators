@@ -80,9 +80,18 @@ static WORD disassemble_inst(WORD address)
         printf("%02x %02x  %s %04xh\n", get_byte(address), get_byte(address + 1), mnemonic, get_word(address));
         address += 2;
     } else if (strcmp(inst->args, "CCC") == 0) {
-        printf("%02x %02x  %c%s %04xh\n", get_byte(address), get_byte(address + 1),  mnemonic[0], 
-            condition[(code >> 3) & 0x07], get_word(address));
-        address += 2;
+        if (mnemonic[0] == 'r') {
+            printf("       r%s\n", condition[(code >> 3) & 0x07]);
+        } else {
+            printf("%02x %02x  %c%s  %04xh\n", get_byte(address), get_byte(address + 1),  mnemonic[0], 
+                condition[(code >> 3) & 0x07], get_word(address));
+            address += 2;
+        }
+    } else if (strcmp(inst->args, "I") == 0) {
+        printf("%02x     %s %02xh\n", get_byte(address), mnemonic, get_byte(address));
+        address++;
+    } else if (strcmp(inst->args, "SSS") == 0) {
+        printf("       %s %s\n", mnemonic, reg8[code & 0x07]);
     } else {
         printf("\n");
     }
@@ -123,8 +132,14 @@ static int disassemble(int argc, char **argv)
 /**********************************************
    Registers command 
  **********************************************/
+char* flag_name[] = { "P  ", "M  ", "NZ ", "Z  ", "", "", "NA ", "A  ", 
+    "", "", "PO ", "PE ", "", "", "NC ", "C  " };
+
 static void show_registers() 
 {
+    int i;
+    BYTE flags = cpu_get_reg_PSW();
+
     printf("a = %02x ", cpu_get_reg_A());
     printf("b = %02x ", cpu_get_reg_B());
     printf("c = %02x ", cpu_get_reg_C());
@@ -133,7 +148,9 @@ static void show_registers()
     printf("hl = %04x ", cpu_get_reg_HL());
     printf("sp = %04x ", cpu_get_reg_SP());
     printf("pc = %04x ", cpu_get_reg_PC());
-    printf("psw = %02x ", cpu_get_reg_PSW());
+    printf("psw = %02x  ", flags);
+    for (i = 0; i < 8; i++)
+        printf("%s", flag_name[(((0x80 >> i) & flags) != 0) + (i << 1)]);
     printf("\n");
     disassemble_inst(cpu_get_reg_PC());
 }

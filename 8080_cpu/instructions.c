@@ -181,12 +181,14 @@ INSTRUCTION(RLC)
 {
     toggle_flags(FLAG_C, regs.b.A & 0x80);
     regs.b.A = (regs.b.A << 1) + (are_set(FLAG_C)? 0x01 : 0x00);
+    test_result(regs.b.A);
 }
 
 INSTRUCTION(RRC)
 {
     toggle_flags(FLAG_C, regs.b.A & 0x01);
     regs.b.A = (regs.b.A >> 1) + (are_set(FLAG_C)? 0x80 : 0x00); 
+    test_result(regs.b.A);
 }
 
 INSTRUCTION(RAL)
@@ -194,6 +196,7 @@ INSTRUCTION(RAL)
     BYTE carry = are_set(FLAG_C);
     toggle_flags(FLAG_C, regs.b.A & 0x80);
     regs.b.A = (regs.b.A << 1) + (carry? 0x01 : 0x00);
+    test_result(regs.b.A);
 }
 
 INSTRUCTION(RAR)
@@ -201,6 +204,65 @@ INSTRUCTION(RAR)
     BYTE carry = are_set(FLAG_C);
     toggle_flags(FLAG_C, regs.b.A & 0x01);
     regs.b.A = (regs.b.A >> 1) + (carry? 0x80 : 0x00);
+    test_result(regs.b.A);
+}
+
+INSTRUCTION(ANA)
+{
+    regs.b.A &= get_source();
+    test_result(regs.b.A);
+    clear_flags(FLAG_C | FLAG_A);
+}
+
+INSTRUCTION(ANI)
+{
+    regs.b.A &= get_next_byte();
+    test_result(regs.b.A);
+    clear_flags(FLAG_C | FLAG_A);
+}
+
+INSTRUCTION(ORA)
+{
+    regs.b.A |= get_source();
+    test_result(regs.b.A);
+    clear_flags(FLAG_C | FLAG_A);
+}
+
+INSTRUCTION(ORI)
+{
+    regs.b.A |= get_next_byte();
+    test_result(regs.b.A);
+    clear_flags(FLAG_C | FLAG_A);
+}
+
+INSTRUCTION(XRA)
+{
+    regs.b.A ^= get_source();
+    test_result(regs.b.A);
+    clear_flags(FLAG_C | FLAG_A);
+}
+
+INSTRUCTION(XRI)
+{
+    regs.b.A ^= get_next_byte();
+    test_result(regs.b.A);
+    clear_flags(FLAG_C | FLAG_A);
+}
+
+INSTRUCTION(CMP)
+{
+    BYTE source = get_source();
+    BYTE result = regs.b.A - source;
+    test_result(result);
+    toggle_flags(FLAG_C, regs.b.A < source);
+}
+
+INSTRUCTION(CPI)
+{
+    BYTE source = get_next_byte();
+    BYTE result = regs.b.A - source;
+    test_result(result);
+    toggle_flags(FLAG_C, regs.b.A < source);
 }
 
 INSTRUCTION(JMP)
@@ -221,10 +283,24 @@ INSTRUCTION(CALL)
     push_word(regs.w.PC);
     regs.w.PC = newPC;
 }
+INSTRUCTION(Cccc)
+{
+    WORD newPC = get_next_word();
+    if (test_flag()) {
+        push_word(regs.w.PC);
+        regs.w.PC = newPC;
+    }
+}
 
 INSTRUCTION(RET)
 {
     regs.w.PC = pop_word();
+}
+
+INSTRUCTION(Rccc)
+{
+    if (test_flag())
+        regs.w.PC = pop_word();
 }
 
 INSTRUCTION(PUSH)
@@ -251,6 +327,8 @@ INSTRUCTION(HALT)
 #define RPBD    0x00, 0x10, 0x10
 #define IMP     0x00, 0x00, 0x00
 #define CCC     0x00, 0x38, 0x08
+#define I       0x00, 0x00, 0x00
+#define SSS     0x00, 0x07, 0x01
 
 #define INSTRUCTION_DEF(mnemonic, code, args) \
     { __ ## mnemonic, #mnemonic, #args, code, args }
@@ -272,14 +350,24 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( DCR, 0x05, DDD ),
     INSTRUCTION_DEF( INX, 0x03, RP ),
     INSTRUCTION_DEF( DCX, 0x0b, RP ),
+    INSTRUCTION_DEF( ANA, 0xa0, SSS ),
+    INSTRUCTION_DEF( ANI, 0xe6, I),
+    INSTRUCTION_DEF( ORA, 0xb0, SSS ),
+    INSTRUCTION_DEF( ORI, 0xf6, I),
+    INSTRUCTION_DEF( XRA, 0xa8, SSS ),
+    INSTRUCTION_DEF( XRI, 0xee, I),
+    INSTRUCTION_DEF( CMP, 0xb8, SSS),
+    INSTRUCTION_DEF( CPI, 0xfe, I),
     INSTRUCTION_DEF( RLC, 0x07, IMP ),
     INSTRUCTION_DEF( RRC, 0x0f, IMP ),
     INSTRUCTION_DEF( RAL, 0x17, IMP ),
     INSTRUCTION_DEF( RAR, 0x1f, IMP ),
     INSTRUCTION_DEF( JMP, 0xc3, ADDR ),
     INSTRUCTION_DEF( Jccc, 0xc2, CCC ),
-    INSTRUCTION_DEF( CALL, 0x0d, ADDR ),
+    INSTRUCTION_DEF( CALL, 0xcd, ADDR ),
+    INSTRUCTION_DEF( Cccc, 0xc4, CCC ),
     INSTRUCTION_DEF( RET, 0xc9, IMP ),
+    INSTRUCTION_DEF( Rccc, 0xc0, CCC ),
     INSTRUCTION_DEF( PUSH, 0xC5, RP ),
     INSTRUCTION_DEF( POP, 0xC1, RP ),
     INSTRUCTION_DEF( HALT, 0x76, IMP )
@@ -292,6 +380,7 @@ void map_instructions()
     int instruction_num;
     int reg_count;
     BYTE map_code = 0;
+    int total = 0;
 
     do {
         instruction_map[map_code] = 0;
@@ -306,12 +395,13 @@ void map_instructions()
             map_code = instruction[instruction_num].code | reg_count;
             printf("%02x ", map_code);
             instruction_map[map_code] = &instruction[instruction_num];
+            total++;
             if (instruction[instruction_num].step == 0)
                 break;
         }
         printf("\n");
     }
 
-    printf("\n");
+    printf("%d codes mapped.\n", total);
 }
 
