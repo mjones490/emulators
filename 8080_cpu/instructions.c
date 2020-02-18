@@ -94,6 +94,20 @@ static inline void set_reg_pair(WORD value)
         *rp = value;
 }
 
+static inline BYTE adder(BYTE value1, BYTE value2)
+{
+    regs.b.Y = value1;
+    regs.b.X = 0;
+    regs.w.XY += value2;
+
+    
+    toggle_flags(FLAG_A, (value1 ^ value2 ^ regs.b.Y) & 0x10);
+    toggle_flags(FLAG_C, regs.b.X == 1);
+    test_result(regs.b.Y);
+
+    return regs.b.Y;
+}
+
 #define INSTRUCTION(mnemonic) \
     static void __ ## mnemonic()
 
@@ -152,19 +166,35 @@ INSTRUCTION(XCHG)
     regs.w.HL = regs.w.DE;
     regs.w.DE = tmp;
 }
-   
+
+INSTRUCTION(ADD)
+{
+    regs.b.A = adder(regs.b.A, get_source());
+}
+
+INSTRUCTION(ADI)
+{
+    regs.b.A = adder(regs.b.A, get_next_byte());
+}
+
+INSTRUCTION(SUB)
+{
+    regs.b.A = adder(regs.b.A, -get_source());
+}
+
+INSTRUCTION(SUI)
+{
+    regs.b.A = adder(regs.b.A, -get_next_byte());
+}
+
 INSTRUCTION(INR)
 {
-    BYTE value = get_dest() + 1;
-    test_result(value);
-    put_dest(value);
+    put_dest(adder(get_dest(), 1));
 }
 
 INSTRUCTION(DCR)
 {
-    BYTE value = get_dest() - 1;
-    test_result(value);
-    put_dest(value);
+    put_dest(adder(get_dest(), -1));
 }
 
 INSTRUCTION(INX)
@@ -205,6 +235,22 @@ INSTRUCTION(RAR)
     toggle_flags(FLAG_C, regs.b.A & 0x01);
     regs.b.A = (regs.b.A >> 1) + (carry? 0x80 : 0x00);
     test_result(regs.b.A);
+}
+
+INSTRUCTION(DAA)
+{
+    BYTE c = are_set(FLAG_C);
+
+    regs.b.A = adder(regs.b.A,
+        (are_set(FLAG_A) || ((regs.b.A & 0x0f) > 0x09))? 0x06 : 0x00);
+
+    BYTE aux = are_set(FLAG_A);
+    set_flags(c);
+
+    regs.b.A = adder(regs.b.A,
+        (are_set(FLAG_C) || ((regs.b.A & 0xf0) > 0x90))? 0x60 : 0x00);
+
+    toggle_flags(FLAG_A, aux);
 }
 
 INSTRUCTION(ANA)
@@ -328,13 +374,13 @@ struct {
     BYTE stop;
     BYTE step;
 } type_info[] = {
-    TYPE_DEF( DDDSSS,   0x37, 0x75, 0x01 ),
+    TYPE_DEF( DDDSSS,    0x37, 0x75, 0x01 ),
     TYPE_DEF( DDD,       0x00, 0x38, 0x08 ),
     TYPE_DEF( SSS,       0x00, 0x07, 0x01 ),
-    TYPE_DEF( RP ,       0x00, 0x30, 0x10 ),
+    TYPE_DEF( RP,        0x00, 0x30, 0x10 ),
     TYPE_DEF( IMM,       0x00, 0x00, 0x00 ),
     TYPE_DEF( DDDIMM,    0x00, 0x38, 0x08 ),
-    TYPE_DEF( RPIMM ,    0x00, 0x30, 0x10 ),
+    TYPE_DEF( RPIMM,     0x00, 0x30, 0x10 ),
     TYPE_DEF( RPBD,      0x00, 0x10, 0x10 ),
     TYPE_DEF( ADDR,      0x00, 0x00, 0x00 ),
     TYPE_DEF( IMP,       0x00, 0x00, 0x00 ),
@@ -357,14 +403,19 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( LDAX, 0x0a, RPBD ),
     INSTRUCTION_DEF( STAX, 0x02, RPBD ),
     INSTRUCTION_DEF( XCHG, 0xeb, IMP ),
+    INSTRUCTION_DEF( ADD, 0x80, SSS ),
+    INSTRUCTION_DEF( ADI, 0xC6, IMM ),
+    INSTRUCTION_DEF( SUB, 0x90, SSS ),
+    INSTRUCTION_DEF( SUI, 0xde, IMM ),
     INSTRUCTION_DEF( INR, 0x04, DDD ),
     INSTRUCTION_DEF( DCR, 0x05, DDD ),
     INSTRUCTION_DEF( INX, 0x03, RP ),
     INSTRUCTION_DEF( DCX, 0x0b, RP ),
+    INSTRUCTION_DEF( DAA, 0x27, IMP ),
     INSTRUCTION_DEF( ANA, 0xa0, SSS ),
-    INSTRUCTION_DEF( ANI, 0xe6, IMM),
+    INSTRUCTION_DEF( ANI, 0xe6, IMM ),
     INSTRUCTION_DEF( ORA, 0xb0, SSS ),
-    INSTRUCTION_DEF( ORI, 0xf6, IMM),
+    INSTRUCTION_DEF( ORI, 0xf6, IMM ),
     INSTRUCTION_DEF( XRA, 0xa8, SSS ),
     INSTRUCTION_DEF( XRI, 0xee, IMM ),
     INSTRUCTION_DEF( CMP, 0xb8, SSS ),
