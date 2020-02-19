@@ -177,14 +177,38 @@ INSTRUCTION(ADI)
     regs.b.A = adder(regs.b.A, get_next_byte());
 }
 
+INSTRUCTION(ADC)
+{
+    regs.b.A = adder(regs.b.A, get_source() + are_set(FLAG_C));
+}
+
+INSTRUCTION(ACI)
+{
+    regs.b.A = adder(regs.b.A, get_next_byte() + are_set(FLAG_C));
+}
+
 INSTRUCTION(SUB)
 {
     regs.b.A = adder(regs.b.A, -get_source());
+    toggle_flags(FLAG_C, !are_set(FLAG_C));
 }
 
 INSTRUCTION(SUI)
 {
     regs.b.A = adder(regs.b.A, -get_next_byte());
+    toggle_flags(FLAG_C, !are_set(FLAG_C));
+}
+
+INSTRUCTION(SBB)
+{
+    regs.b.A = adder(regs.b.A, -(get_source() + are_set(FLAG_C)));
+    toggle_flags(FLAG_C, !are_set(FLAG_C));
+}
+
+INSTRUCTION(SBI)
+{
+    regs.b.A = adder(regs.b.A, -(get_next_byte() + are_set(FLAG_C)));
+    toggle_flags(FLAG_C, !are_set(FLAG_C));
 }
 
 INSTRUCTION(INR)
@@ -195,6 +219,7 @@ INSTRUCTION(INR)
 INSTRUCTION(DCR)
 {
     put_dest(adder(get_dest(), -1));
+    toggle_flags(FLAG_C, !are_set(FLAG_C));
 }
 
 INSTRUCTION(INX)
@@ -205,6 +230,16 @@ INSTRUCTION(INX)
 INSTRUCTION(DCX)
 {
     set_reg_pair(get_reg_pair() - 1);
+}
+
+INSTRUCTION(DAD)
+{
+    WORD source = get_reg_pair();
+    WORD result = regs.w.HL + source;
+    toggle_flags(FLAG_C, ((source ^ result ^ regs.w.HL) & 0x8000) ?
+        ((regs.w.HL | source) & 0x8000) > 0x00 :
+        ((regs.w.HL & source) & 0x8000) > 0x00);
+    regs.w.HL = result;
 }
 
 INSTRUCTION(RLC)
@@ -359,6 +394,11 @@ INSTRUCTION(POP)
     set_reg_pair(pop_word());
 }
 
+INSTRUCTION(SPHL)
+{
+    regs.w.SP = regs.w.HL;
+}
+
 INSTRUCTION(HALT)
 {
     printf("Halt!\n");
@@ -405,12 +445,17 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( XCHG, 0xeb, IMP ),
     INSTRUCTION_DEF( ADD, 0x80, SSS ),
     INSTRUCTION_DEF( ADI, 0xC6, IMM ),
+    INSTRUCTION_DEF( ADC, 0x88, SSS ),
+    INSTRUCTION_DEF( ACI, 0xCe, IMM ),
     INSTRUCTION_DEF( SUB, 0x90, SSS ),
-    INSTRUCTION_DEF( SUI, 0xde, IMM ),
+    INSTRUCTION_DEF( SUI, 0xd6, IMM ),
+    INSTRUCTION_DEF( SBB, 0x98, SSS ),
+    INSTRUCTION_DEF( SBI, 0xde, IMM ),
     INSTRUCTION_DEF( INR, 0x04, DDD ),
     INSTRUCTION_DEF( DCR, 0x05, DDD ),
     INSTRUCTION_DEF( INX, 0x03, RP ),
     INSTRUCTION_DEF( DCX, 0x0b, RP ),
+    INSTRUCTION_DEF( DAD, 0x09, RP ),
     INSTRUCTION_DEF( DAA, 0x27, IMP ),
     INSTRUCTION_DEF( ANA, 0xa0, SSS ),
     INSTRUCTION_DEF( ANI, 0xe6, IMM ),
@@ -430,8 +475,9 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( Cccc, 0xc4, CCC ),
     INSTRUCTION_DEF( RET, 0xc9, IMP ),
     INSTRUCTION_DEF( Rccc, 0xc0, CCC ),
-    INSTRUCTION_DEF( PUSH, 0xC5, RP ),
-    INSTRUCTION_DEF( POP, 0xC1, RP ),
+    INSTRUCTION_DEF( PUSH, 0xc5, RP ),
+    INSTRUCTION_DEF( POP, 0xc1, RP ),
+    INSTRUCTION_DEF( SPHL, 0xf9, IMP ),
     INSTRUCTION_DEF( HALT, 0x76, IMP )
 };
 
