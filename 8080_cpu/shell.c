@@ -17,6 +17,7 @@
 const int ram_size = 8192;
 
 BYTE *ram;
+WORD PC_breakpoint = 0;
 
 BYTE my_accessor(WORD address, bool read_byte, BYTE value)
 {
@@ -32,16 +33,18 @@ BYTE my_accessor(WORD address, bool read_byte, BYTE value)
 
 BYTE my_ports(BYTE port, bool read_byte, BYTE value)
 {
-    if (port == 1)
+    if (port == 1) {
         printf("%c", value);
+    //    fflush(stdout);
+    }
 
     return value;
 }
 
 static void cycle()
 {
-    usleep(1);
-    if (!cpu_get_halted())
+    usleep(10);
+    if (!cpu_get_halted() && PC_breakpoint != cpu_get_reg_PC())
         cpu_execute_instruction();
 }
 
@@ -225,22 +228,34 @@ static int registers(int argc, char **argv)
     return 0;
 }
 
-static int step()
+static int step(int argc, char **argv)
 {
     cpu_execute_instruction();
     show_registers();
     return 0;
 }
 
-static int go()
+static int go(int argc, char **argv)
 {
     cpu_set_halted(false);
     return 0;
 }
 
-static int halt()
+static int halt(int argc, char **argv)
 {
     cpu_set_halted(true);
+    return 0;
+}
+
+static int breakpoint(int argc, char **argv)
+{
+    int tmp;
+
+    if (argc == 2 && 1 == sscanf(argv[1], "%4x", &tmp))
+        PC_breakpoint = (WORD)tmp;
+
+    printf("Breakpoint set at %04xh.\n", PC_breakpoint);
+
     return 0;
 }
 
@@ -297,6 +312,7 @@ void cpu_shell_load_commands()
     shell_add_command("load", "Load a binary file the given address.", load, false);
     shell_add_command("go", "Start program.", go, false);
     shell_add_command("halt", "Halt CPU.", halt, false);
+    shell_add_command("breakpoint", "Set or view the PC breakpoint.", breakpoint, false);
 }
 
 int main(int argc, char **argv)

@@ -14,8 +14,8 @@
             jp      (hl)
 
 jmptab      dw      test001, test002, test003, test004 
-            dw      test005, test006, test007
-
+            dw      test005, test006, test007, test008
+            dw      test009, test010
             nop
             nop
             nop
@@ -202,6 +202,64 @@ test007b:   halt
 
 message:    text    "Hello, world!"
             db      0ah,0dh,00h
+
+char_out:   equ     01h
+
+test008:    ld      sp,stack
+            ld      a,42h
+            call    print_byte
+            call    crlf
+            halt
+
+test009:    ld      sp,stack
+            ld      hl,1234h
+            call    print_word
+            call    crlf 
+            halt
+
+test010:    ld      sp,stack
+            ld      hl,0000h
+            call    crlf
+test010a:   ld      a,20h
+            ;out     (char_out),a
+            ;call    print_word
+            inc     hl
+            ld      a,l
+            or      h
+            jp      nz,test010a
+            call    crlf
+            halt
+
+print_word: ld      a,h
+            call    print_byte
+            ld      a,l
+
+print_byte: push    af
+            and     a,0f0h
+            rra
+            rra
+            rra
+            rra
+            call    print_nyb
+            pop     af
+            and     a,0fh
+
+print_nyb:  push    af
+            or      a,30h
+            cp      3ah
+            jp      m,$+2
+            add     a,27h
+            out     (char_out),a
+            pop     af
+            ret
+
+crlf:       push    af
+            ld      a,0ah
+            out     (char_out),a
+            ld      a,0dh
+            out     (char_out),a
+            pop     af
+            ret
 
 cleanup:    ld      a,0h
             ld      bc,0h
