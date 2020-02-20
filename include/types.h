@@ -7,8 +7,12 @@
 typedef unsigned short  WORD;
 typedef unsigned char   BYTE;
 typedef unsigned int    DWORD;
+
 // Bus access
 typedef BYTE (*accessor_t)(WORD address, bool read, BYTE value);
+
+// Port access
+typedef BYTE (*port_accessor_t)(BYTE port, bool read, BYTE value);
 
 static inline WORD word(BYTE lo, BYTE hi)
 {

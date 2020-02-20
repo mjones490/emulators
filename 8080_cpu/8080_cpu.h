@@ -30,7 +30,8 @@ WORD cpu_get_reg_SP();
 void cpu_set_reg_PC(WORD value); 
 WORD cpu_get_reg_PC();
 BYTE cpu_get_reg_PSW();
-void cpu_init(accessor_t bus);
+void cpu_init(accessor_t bus, port_accessor_t ports);
 BYTE cpu_execute_instruction();
-
+void cpu_set_halted(bool halted);
+bool cpu_get_halted();
 #endif // __8080_CPU_H

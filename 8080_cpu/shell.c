@@ -30,6 +30,21 @@ BYTE my_accessor(WORD address, bool read_byte, BYTE value)
     return value;
 }
 
+BYTE my_ports(BYTE port, bool read_byte, BYTE value)
+{
+    if (port == 1)
+        printf("%c", value);
+
+    return value;
+}
+
+static void cycle()
+{
+    usleep(1);
+    if (!cpu_get_halted())
+        cpu_execute_instruction();
+}
+
 /**********************************************
    Disassemble command
  **********************************************/
@@ -217,6 +232,18 @@ static int step()
     return 0;
 }
 
+static int go()
+{
+    cpu_set_halted(false);
+    return 0;
+}
+
+static int halt()
+{
+    cpu_set_halted(true);
+    return 0;
+}
+
 static void load_image(char* file_name, WORD address)
 {
     int fd;
@@ -268,6 +295,8 @@ void cpu_shell_load_commands()
     shell_add_command("step", "Execute single instruction.", step, true);
     shell_add_command("disassemble", "Disassemble code.", disassemble, true);
     shell_add_command("load", "Load a binary file the given address.", load, false);
+    shell_add_command("go", "Start program.", go, false);
+    shell_add_command("halt", "Halt CPU.", halt, false);
 }
 
 int main(int argc, char **argv)
@@ -275,8 +304,9 @@ int main(int argc, char **argv)
     ram = malloc(ram_size);
     shell_set_accessor(my_accessor);
     shell_initialize("8080 shell");
-    cpu_init(my_accessor);
+    cpu_init(my_accessor, my_ports);
     cpu_shell_load_commands();
+    shell_set_loop_cb(cycle);
     shell_loop();
     shell_finalize();
     printf("\n");

@@ -1,15 +1,21 @@
             org     1000h
-            jp      test001 ; 1000h
-            nop
-            jp      test002 ; 1004h
-            nop
-            jp      test003 ; 1008h
-            nop
-            jp      test004 ; 100ch
-            nop
-            jp      test005 ; 1010h
-            nop
-            jp      test006 ; 1014h
+            ld      hl,jmptab
+            rla
+            and     0feh
+            add     a,l
+            ld      l,a
+            ld      a,h
+            adc     a,00h
+            ld      h,a
+            ld      e,(hl)
+            inc     hl
+            ld      d,(hl)
+            ex      de,hl
+            jp      (hl)
+
+jmptab      dw      test001, test002, test003, test004 
+            dw      test005, test006, test007
+
             nop
             nop
             nop
@@ -185,6 +191,17 @@ test006:    ld      sp,stack
             nop
             nop
 
+test007:    ld      hl,message
+test007a:   ld      a,(hl)
+            cp      a,00h
+            jp      z,test007b
+            out     (01h),a
+            inc     hl
+            jp      test007a
+test007b:   halt
+
+message:    text    "Hello, world!"
+            db      0ah,0dh,00h
 
 cleanup:    ld      a,0h
             ld      bc,0h

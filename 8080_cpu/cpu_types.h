@@ -31,12 +31,24 @@ union regs_t {
 
 struct cpu_state_t {
     accessor_t bus;
+    port_accessor_t port; 
     union regs_t* regs;
     BYTE code;
+    bool halted;
 };
 
 extern union regs_t regs;
 extern struct cpu_state_t cpu_state;
+
+static inline BYTE read_port(BYTE port)
+{
+    return cpu_state.port(port, true, 0);
+}
+
+static inline BYTE write_port(BYTE port, BYTE value)
+{
+    return cpu_state.port(port, false, value);
+}
 
 static inline BYTE get_byte(WORD address)
 {

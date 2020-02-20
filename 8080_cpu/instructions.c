@@ -346,6 +346,21 @@ INSTRUCTION(CPI)
     toggle_flags(FLAG_C, regs.b.A < source);
 }
 
+INSTRUCTION(CPA)
+{
+    regs.b.A = ~regs.b.A;
+}
+
+INSTRUCTION(CPC)
+{
+    toggle_flags(FLAG_C, !are_set(FLAG_C));
+}
+
+INSTRUCTION(STC)
+{
+    set_flags(FLAG_C);
+}
+
 INSTRUCTION(JMP)
 {
     regs.w.PC = get_next_word();
@@ -394,14 +409,30 @@ INSTRUCTION(POP)
     set_reg_pair(pop_word());
 }
 
+INSTRUCTION(PCHL)
+{
+    regs.w.PC = regs.w.HL;
+}
+
 INSTRUCTION(SPHL)
 {
     regs.w.SP = regs.w.HL;
 }
 
+INSTRUCTION(IN)
+{
+    regs.b.A = read_port(get_next_byte());
+}
+
+INSTRUCTION(OUT)
+{
+    write_port(get_next_byte(), regs.b.A);
+}
+
 INSTRUCTION(HALT)
 {
     printf("Halt!\n");
+    cpu_state.halted = true;
 }
 
 #define TYPE_DEF(inst_type, start, stop, step) \
@@ -469,6 +500,9 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( RRC, 0x0f, IMP ),
     INSTRUCTION_DEF( RAL, 0x17, IMP ),
     INSTRUCTION_DEF( RAR, 0x1f, IMP ),
+    INSTRUCTION_DEF( CPA, 0x2f, IMP ),
+    INSTRUCTION_DEF( CPC, 0x3f, IMP ),
+    INSTRUCTION_DEF( STC, 0x37, IMP ),
     INSTRUCTION_DEF( JMP, 0xc3, ADDR ),
     INSTRUCTION_DEF( Jccc, 0xc2, CCC ),
     INSTRUCTION_DEF( CALL, 0xcd, ADDR ),
@@ -477,7 +511,10 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( Rccc, 0xc0, CCC ),
     INSTRUCTION_DEF( PUSH, 0xc5, RP ),
     INSTRUCTION_DEF( POP, 0xc1, RP ),
+    INSTRUCTION_DEF( PCHL, 0xe9, IMP),
     INSTRUCTION_DEF( SPHL, 0xf9, IMP ),
+    INSTRUCTION_DEF( IN, 0xdb, IMM ),
+    INSTRUCTION_DEF( OUT, 0xd3, IMM ),
     INSTRUCTION_DEF( HALT, 0x76, IMP )
 };
 

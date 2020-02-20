@@ -19,3 +19,14 @@ BYTE cpu_execute_instruction()
 {
     return exec_instruction(get_next_byte());
 }
+
+void cpu_set_halted(bool halted)
+{
+    cpu_state.halted = halted;
+}
+
+bool cpu_get_halted()
+{
+    return cpu_state.halted;
+}
+
