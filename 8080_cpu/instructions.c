@@ -409,6 +409,13 @@ INSTRUCTION(POP)
     set_reg_pair(pop_word());
 }
 
+INSTRUCTION(XTHL)
+{
+    WORD value = get_word(regs.w.SP);
+    put_word(regs.w.SP, regs.w.HL);
+    regs.w.HL = value;
+}
+
 INSTRUCTION(PCHL)
 {
     regs.w.PC = regs.w.HL;
@@ -429,7 +436,7 @@ INSTRUCTION(OUT)
     write_port(get_next_byte(), regs.b.A);
 }
 
-INSTRUCTION(HALT)
+INSTRUCTION(HLT)
 {
     printf("Halt!\n");
     cpu_state.halted = true;
@@ -511,11 +518,12 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( Rccc, 0xc0, CCC ),
     INSTRUCTION_DEF( PUSH, 0xc5, RP ),
     INSTRUCTION_DEF( POP, 0xc1, RP ),
+    INSTRUCTION_DEF( XTHL, 0xe3, IMP ),
     INSTRUCTION_DEF( PCHL, 0xe9, IMP),
     INSTRUCTION_DEF( SPHL, 0xf9, IMP ),
     INSTRUCTION_DEF( IN, 0xdb, IMM ),
     INSTRUCTION_DEF( OUT, 0xd3, IMM ),
-    INSTRUCTION_DEF( HALT, 0x76, IMP )
+    INSTRUCTION_DEF( HLT, 0x76, IMP )
 };
 
 

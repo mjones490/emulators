@@ -52,7 +52,7 @@ static void cycle()
    Disassemble command
  **********************************************/
 char *reg8[] = { "b", "c", "d", "e", "h", "l", "m", "a" };
-char *reg16[] = { "bc", "de", "hl", "sp", "psw" };
+char *reg16[] = { "b", "d", "h", "sp", "psw" };
 char *condition[] = { "nz", "z ", "nc", "c ", "po", "pe", "p ", "m " };
 
 static WORD disassemble_inst(WORD address)
@@ -278,6 +278,7 @@ static void load_image(char* file_name, WORD address)
         return;
     }    
 
+    printf("Reading %d bytes...\n", sb.st_size);
     bytes_read = read(fd, &ram[address], sb.st_size);
     printf("%d bytes read.\n", bytes_read);
     close(fd);
