@@ -41,11 +41,26 @@ BYTE my_ports(BYTE port, bool read_byte, BYTE value)
     return value;
 }
 
+static void execute_instruction()
+{
+    cpu_execute_instruction();
+    if (cpu_get_halted()) {
+        printf("System halted.\n");
+    }
+}
+
 static void cycle()
 {
     usleep(10);
-    if (!cpu_get_halted() && PC_breakpoint != cpu_get_reg_PC())
-        cpu_execute_instruction();
+
+    if (!cpu_get_halted()) {
+        if (PC_breakpoint == cpu_get_reg_PC()) {
+            printf("Breakpoint at %04xh reached.\n", cpu_get_reg_PC());
+            cpu_set_halted(true);
+        } else {
+            execute_instruction();
+        }
+    }
 }
 
 /**********************************************
@@ -71,12 +86,11 @@ static WORD disassemble_inst(WORD address)
     if (inst == NULL) 
         inst = instruction_map[0];
 
-    do {
-        mnemonic[i] = tolower(inst->mnemonic[i]);
-        if (mnemonic[i] == 0)
-            mnemonic[i] = ' ';
-        mnemonic[++i] = 0;
-    } while (i < 4);
+    mnemonic[2] = ' ';
+    mnemonic[3] = ' ';
+    mnemonic[4] = 0;
+    while (inst->mnemonic[i])
+        mnemonic[i++] = tolower(inst->mnemonic[i]);
 
     switch (inst->inst_type) {
     case IMP:
@@ -121,6 +135,9 @@ static WORD disassemble_inst(WORD address)
         break;
     case SSS:
         printf("       %s %s\n", mnemonic, reg8[code & 0x07]);
+        break;
+    case NNN:
+        printf("       %s %02xh\n", mnemonic, (code >> 3) & 0x07);
         break;
     default:
         printf("\n");
@@ -230,7 +247,7 @@ static int registers(int argc, char **argv)
 
 static int step(int argc, char **argv)
 {
-    cpu_execute_instruction();
+    execute_instruction();
     show_registers();
     return 0;
 }
@@ -238,6 +255,7 @@ static int step(int argc, char **argv)
 static int go(int argc, char **argv)
 {
     cpu_set_halted(false);
+    execute_instruction();
     return 0;
 }
 

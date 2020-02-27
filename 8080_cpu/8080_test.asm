@@ -1,3 +1,9 @@
+            org     0010h
+            push    psw
+            call    printstr
+            pop     psw
+            ret
+
             org     1000h
             lxi     h,jmptab
             ral
@@ -16,7 +22,7 @@
 
 jmptab      dw      test001, test002, test003, test004 
             dw      test005, test006, test007, test008
-            dw      test009 ; , test010
+            dw      test009,  test010
             nop
             nop
             nop
@@ -213,19 +219,15 @@ test009:    lxi     sp,stack
             call    crlf 
             hlt
 
-;test010:    ld      sp,stack
-;            ld      hl,0000h
-;            call    crlf
-;test010a:   ld      a,20h
-;            ;out     (char_out),a
-;            ;call    print_word
-;            inc     hl
-;            ld      a,l
-;            or      h
-;            jp      nz,test010a
-;            call    crlf
-;            halt
-
+test010:    lxi     sp,stack
+            lxi     h,message
+            rst     02h
+            lxi     h,message2
+            rst     02h
+            call    crlf
+            hlt
+message2:   text    "That message (and this one) was brought to you by rst 02h!"
+            db      00h
 cleanup:    mvi     a,0h
             lxi     b,0h
             lxi     d,0h

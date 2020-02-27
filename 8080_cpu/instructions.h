@@ -15,7 +15,8 @@ enum instruction_type {
     RPBD,
     ADDR,
     IMP,
-    CCC
+    CCC,
+    NNN
 };
 
 struct instruction_t {

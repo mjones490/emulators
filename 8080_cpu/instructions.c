@@ -399,6 +399,12 @@ INSTRUCTION(Rccc)
         regs.w.PC = pop_word();
 }
 
+INSTRUCTION(RST)
+{
+    push_word(regs.w.PC);
+    regs.w.PC = (cpu_state.code & 0x38);
+}
+
 INSTRUCTION(PUSH)
 {
     push_word(get_reg_pair());
@@ -436,9 +442,18 @@ INSTRUCTION(OUT)
     write_port(get_next_byte(), regs.b.A);
 }
 
+INSTRUCTION(EI)
+{
+    // To Be Implemented
+}
+
+INSTRUCTION(DI)
+{
+    // To Be Implemented
+}
+
 INSTRUCTION(HLT)
 {
-    printf("Halt!\n");
     cpu_state.halted = true;
 }
 
@@ -462,7 +477,8 @@ struct {
     TYPE_DEF( RPBD,      0x00, 0x10, 0x10 ),
     TYPE_DEF( ADDR,      0x00, 0x00, 0x00 ),
     TYPE_DEF( IMP,       0x00, 0x00, 0x00 ),
-    TYPE_DEF( CCC,       0x00, 0x38, 0x08 )
+    TYPE_DEF( CCC,       0x00, 0x38, 0x08 ),
+    TYPE_DEF( NNN,       0x00, 0x38, 0x08 )
 };
 
 #define INSTRUCTION_DEF(mnemonic, code, inst_type ) \
@@ -471,6 +487,13 @@ struct {
 struct instruction_t *instruction_map[256];
 struct instruction_t instruction[] = {
     INSTRUCTION_DEF( NOP, 0x00, IMP ),
+    INSTRUCTION_DEF( NOP, 0x08, IMP ),
+    INSTRUCTION_DEF( NOP, 0x10, IMP ),
+    INSTRUCTION_DEF( NOP, 0x18, IMP ),
+    INSTRUCTION_DEF( NOP, 0x20, IMP ),
+    INSTRUCTION_DEF( NOP, 0x28, IMP ),
+    INSTRUCTION_DEF( NOP, 0x30, IMP ),
+    INSTRUCTION_DEF( NOP, 0x38, IMP ),
     INSTRUCTION_DEF( MOV, 0x40, DDDSSS ),
     INSTRUCTION_DEF( MVI, 0x06, DDDIMM ),
     INSTRUCTION_DEF( LXI, 0x01, RPIMM ),
@@ -511,11 +534,17 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( CPC, 0x3f, IMP ),
     INSTRUCTION_DEF( STC, 0x37, IMP ),
     INSTRUCTION_DEF( JMP, 0xc3, ADDR ),
+    INSTRUCTION_DEF( JMP, 0xcb, ADDR ),
     INSTRUCTION_DEF( Jccc, 0xc2, CCC ),
-    INSTRUCTION_DEF( CALL, 0xcd, ADDR ),
+    INSTRUCTION_DEF( CALL, 0xcd, ADDR  ),
+    INSTRUCTION_DEF( CALL, 0xdd, ADDR  ),
+    INSTRUCTION_DEF( CALL, 0xed, ADDR  ),
+    INSTRUCTION_DEF( CALL, 0xfd, ADDR  ),
     INSTRUCTION_DEF( Cccc, 0xc4, CCC ),
     INSTRUCTION_DEF( RET, 0xc9, IMP ),
+    INSTRUCTION_DEF( RET, 0xd9, IMP ),
     INSTRUCTION_DEF( Rccc, 0xc0, CCC ),
+    INSTRUCTION_DEF( RST, 0xc7, NNN ),
     INSTRUCTION_DEF( PUSH, 0xc5, RP ),
     INSTRUCTION_DEF( POP, 0xc1, RP ),
     INSTRUCTION_DEF( XTHL, 0xe3, IMP ),
@@ -523,6 +552,8 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( SPHL, 0xf9, IMP ),
     INSTRUCTION_DEF( IN, 0xdb, IMM ),
     INSTRUCTION_DEF( OUT, 0xd3, IMM ),
+    INSTRUCTION_DEF( EI, 0xfb, IMP ),
+    INSTRUCTION_DEF( DI, 0xf3, IMP ),
     INSTRUCTION_DEF( HLT, 0x76, IMP )
 };
 

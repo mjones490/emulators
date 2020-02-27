@@ -6,10 +6,10 @@ LFLAGS = -Wall -L$(LIB_DIR)
 
 all : build_libs shell
 
+.SECONDARY :
+
 build_libs :
 	cd ../shell && $(MAKE)
-
-.SECONDARY :
 
 clean :
 	rm -vf shell *.o *.d 
