@@ -16,9 +16,9 @@
             mov     e,m
             inx     h
             mov     d,m
-            xchg
             lxi     sp,stack
-            pchl
+            push    d
+            ret
 
 jmptab      dw      test001, test002, test003, test004 
             dw      test005, test006, test007, test008

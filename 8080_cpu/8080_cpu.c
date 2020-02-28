@@ -123,5 +123,5 @@ WORD cpu_get_reg_PC()
 
 BYTE cpu_get_reg_PSW()
 {
-    return regs.b.PSW;
+    return (regs.b.PSW & 0xd7) | 0x02;
 }

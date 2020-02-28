@@ -77,8 +77,10 @@ static inline WORD get_reg_pair()
     WORD *rp = reg_pair[(cpu_state.code >> 4) & 0b11];
 
     // If getting SP and PUSHing, return value in PSWA
-    if (rp == &regs.w.SP && cpu_state.code == 0xf5)
+    if (rp == &regs.w.SP && cpu_state.code == 0xf5) {
+        regs.b.PSW = (regs.b.PSW & 0xd7) | 0x02;
         return regs.w.PSWA;
+    }
 
     return *rp;
 }
