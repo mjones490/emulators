@@ -2,7 +2,11 @@
 **.d
 **.a
 
-6502_cpu/shell
+shell
+*/images
+.*.swp
+*.html
+*/ROMs
 markII/markII
 markII/markII.cfg
 
