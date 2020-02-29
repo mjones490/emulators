@@ -7,12 +7,10 @@ struct cpu_state_t cpu_state;
 
 static BYTE exec_instruction(BYTE code)
 {
-    if (instruction_map[code] > 0) {
-        cpu_state.code = code;
-        instruction_map[code]->handler();
-    }
-    
-    return 0;
+    cpu_state.code = code;
+    cpu_state.total_clocks = instruction_map[code]->clocks;
+    instruction_map[code]->handler();    
+    return cpu_state.total_clocks;
 }
 
 BYTE cpu_execute_instruction()

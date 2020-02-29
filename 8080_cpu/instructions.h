@@ -24,6 +24,7 @@ struct instruction_t {
     char* mnemonic;
     enum instruction_type inst_type;
     BYTE code;
+    BYTE clocks;
 };
 
 extern struct instruction_t *instruction_map[256];

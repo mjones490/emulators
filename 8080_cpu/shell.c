@@ -200,6 +200,8 @@ static void show_registers()
     printf("psw = %02x  ", flags);
     for (i = 0; i < 8; i++)
         printf("%s", flag_name[(((0x80 >> i) & flags) != 0) + (i << 1)]);
+    if (cpu_state.total_clocks > 0) 
+        printf("  %d clocks last used", cpu_state.total_clocks);
     printf("\n");
     disassemble_inst(cpu_get_reg_PC());
 }

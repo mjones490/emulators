@@ -34,6 +34,7 @@ struct cpu_state_t {
     port_accessor_t port; 
     union regs_t* regs;
     BYTE code;
+    BYTE total_clocks;
     bool halted;
 };
 
