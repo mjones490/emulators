@@ -43,8 +43,9 @@ BYTE my_ports(BYTE port, bool read_byte, BYTE value)
 
 static void execute_instruction()
 {
+    BYTE already_halted = cpu_get_halted();
     cpu_execute_instruction();
-    if (cpu_get_halted()) {
+    if (!already_halted && cpu_get_halted()) {
         printf("System halted.\n");
     }
 }
