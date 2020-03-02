@@ -226,8 +226,7 @@ test010:    lxi     sp,stack
             rst     02h
             call    crlf
             hlt
-message2:   text    "That message (and this one) was brought to you by rst 02h!"
-            db      00h
+message2:   string  "That message (and this one) was brought to you by rst 02h!"
 cleanup:    mvi     a,0h
             lxi     b,0h
             lxi     d,0h

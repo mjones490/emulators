@@ -72,6 +72,13 @@ static inline void put_dest(BYTE value)
         *ddd = value;
 }
 
+
+static inline bool is_op_mem()
+{
+    return ((cpu_state.code & 0x38) == 0x30) ||
+        ((cpu_state.code & 0x07) == 0x06);
+}
+
 static inline WORD get_reg_pair()
 {
     WORD *rp = reg_pair[(cpu_state.code >> 4) & 0b11];
@@ -119,6 +126,9 @@ INSTRUCTION(NOP)
 
 INSTRUCTION(MOV)
 {
+    if (is_op_mem())
+        cpu_state.total_clocks += 2;
+
     put_dest(get_source());
 }
 
@@ -387,6 +397,7 @@ INSTRUCTION(Cccc)
     if (test_flag()) {
         push_word(regs.w.PC);
         regs.w.PC = newPC;
+        cpu_state.total_clocks += 6;
     }
 }
 
@@ -397,8 +408,10 @@ INSTRUCTION(RET)
 
 INSTRUCTION(Rccc)
 {
-    if (test_flag())
+    if (test_flag()) {
         regs.w.PC = pop_word();
+        cpu_state.total_clocks += 6;
+    }
 }
 
 INSTRUCTION(RST)
