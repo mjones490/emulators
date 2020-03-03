@@ -36,6 +36,7 @@ struct cpu_state_t {
     BYTE code;
     BYTE total_clocks;
     bool halted;
+    WORD breakpoint;
 };
 
 extern union regs_t regs;

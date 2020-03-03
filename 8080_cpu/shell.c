@@ -17,7 +17,6 @@
 const int ram_size = 8192;
 
 BYTE *ram;
-WORD PC_breakpoint = 0;
 
 BYTE my_accessor(WORD address, bool read_byte, BYTE value)
 {
@@ -55,25 +54,13 @@ static void cycle()
     usleep(10);
 
     if (!cpu_get_halted()) {
-        if (PC_breakpoint == cpu_get_reg_PC()) {
+        if (cpu_state.breakpoint == cpu_get_reg_PC()) {
             printf("Breakpoint at %04xh reached.\n", cpu_get_reg_PC());
             cpu_set_halted(true);
         } else {
             execute_instruction();
         }
     }
-}
-
-static int breakpoint(int argc, char **argv)
-{
-    int tmp;
-
-    if (argc == 2 && 1 == sscanf(argv[1], "%4x", &tmp))
-        PC_breakpoint = (WORD)tmp;
-
-    printf("Breakpoint set at %04xh.\n", PC_breakpoint);
-
-    return 0;
 }
 
 int main(int argc, char **argv)
@@ -83,7 +70,6 @@ int main(int argc, char **argv)
     shell_initialize("8080 shell");
     cpu_init(my_accessor, my_ports);
     cpu_shell_load_commands();
-    shell_add_command("breakpoint", "Set or view the PC breakpoint.", breakpoint, false);
     shell_set_loop_cb(cycle);
     shell_loop();
     shell_finalize();
