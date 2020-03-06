@@ -13,7 +13,7 @@ TERM_EXE := term
 INC_DIR = ../include
 LIB_DIR = ../lib
 
-CFLAGS = -Wall -g -MMD -MP -D_REENTRANT -O -I$(INC_DIR)
+CFLAGS = -Wall -g -fPIC -MMD -MP -D_REENTRANT -O -I$(INC_DIR)
 LFLAGS = -Wall -L$(LIB_DIR)
 
 CP = cp -v

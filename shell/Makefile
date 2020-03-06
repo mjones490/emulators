@@ -8,7 +8,7 @@ EXE_LIBS := shell readline
 INC_DIR = ../include
 LIB_DIR = ../lib
 
-CFLAGS = -Wall -g -MMD -MP -D_REENTRANT -I$(INC_DIR)
+CFLAGS = -Wall -fPIC -g -MMD -MP -D_REENTRANT -I$(INC_DIR)
 LFLAGS = -Wall -L$(LIB_DIR)
 
 CP = cp -v
