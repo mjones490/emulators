@@ -42,7 +42,7 @@ and pull them to and from a stack.  I wanted to affect bits
 in the status register and branch according which bits
 were set or cleared.  I wanted to write clever routines that
 do really complex things in as few instructions as posible,
-and go over them and over them to _bum out_ as many instructions
+and go over them and over them to *bum out* as many instructions
 as possible.
 
 Problem was, I did not have any of the old equipment to expiriment
@@ -82,7 +82,7 @@ Then I plugged in an Apple II ROM, and fired it up, and it immediately
 crashed.  I had more 6502 instructions to emulate.  Fired it up again, 
 got **APPLE ][** at the top of the screen, and then crashed.  Couple more
 rounds of fixing instruction that did not work quite right, fired it
-up again, got **APPLE ][** at the top, and a prompt with a blinking 
+up again, got **APPLE II** at the top, and a prompt with a blinking 
 cursor!  I typed in the old "Hello, World!" program, and ran it, and it 
 said "Hello, World!" right back!
 
@@ -97,7 +97,36 @@ HELLO, WORLD!
 ]
 ```
 
+Once I got the basic Apple II emulator working, I began developement on
+the Disk II emulator.  This greately increased the amount of software
+available, because now I could go out get download disk images to run
+on the emulator.  After that, I emulated the speaker, and I could play
+rudimentary music, and even S.A.M. speech synthesis software.  Then I 
+improved the video to run hi-res graphics, and I could play all the 
+old games I used to play as a kid.  It was almost like having my own
+Apple II!
 
+Getting this emulator up and running was a very satisfying project.
+I think the coolest thing about it was that I wrote software capable
+of running software written by other people a long time ago, software
+that I have no idea how it really does what it does, but that *my*
+software execute *it*!
+
+I eventually grew tired of working on that emulator.  I decided to
+take a long break from it.  But I knew I'd get back to that project
+sooner or later.  And I did just that a few weeks ago when I developed
+the **Intel 8080** CPU emulator.  Not quite as big a project as the 
+**6502** but fun and interesting nontheless.  
+
+I am currently working on what I call the **dynosaur** project.  It's
+name comes from the word *dinosaur*, because it's all about ancient
+computer hardware, and *dynamic*, because I am wrapping code around 
+the **6502** and **8080** CPU libraries to make them into *plugins*
+which can be swapped out with each other by the **dynosaur**.  It 
+will eventually have a SDL graphics based video output and keyboard
+input, as well as probably other devices.  I would like to emulate
+other CPUs as well, such as the **Z80** and **TMS9900**, and they
+will be able to plug in to the **dynosaur** as well.
 
 ### Directories
 
