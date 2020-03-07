@@ -6,7 +6,7 @@ monitor emulators.
 
 ### Backstory
 
-Computers have always fascinated me.  I enjoys programming them,
+Computers have always fascinated me.  I enjoy programming them,
 learning how they work, and learning the history behind them.
 I've been around them since the early '80s, when I was a kid,
 and "home" computers at the time were mostly simple, 8 bit machines
@@ -16,6 +16,14 @@ they ran at less than 5mHz. None had hard drives, and only a very
 few had floppy drives. We had to use cassette tapes for long term 
 storage.  Those were the days.  Most had some form of built in 
 BASIC.
+
+If you were lucky, your machine gave you the capability to peek
+and poke bytes directly into RAM.  If you were _really_ lucky, you
+had a program called and assembler, which read human readable
+instructions and turned them into machine code that the computer
+could understand.  This resulting code ran much faster than code
+written in BASIC, but was also harder to understand for most
+people.  But it was whole lot of fun to work on.
 
 ### Directories
 
