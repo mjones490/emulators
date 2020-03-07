@@ -592,21 +592,21 @@ void map_instructions()
             printf("Fatal: Mismatched instruction types found in initializtion.\n");
             exit(0);
         }
-        printf("Setting instruction %s %s: ", instruction[instruction_num].mnemonic,
-            type_info[inst_type].name);
+/*        printf("Setting instruction %s %s: ", instruction[instruction_num].mnemonic,
+            type_info[inst_type].name); */
         for (reg_count = type_info[inst_type].start; 
             reg_count <= type_info[inst_type].stop;
             reg_count += type_info[inst_type].step) {
             map_code = instruction[instruction_num].code | reg_count;
-            printf("%02x ", map_code);
+//            printf("%02x ", map_code);
             instruction_map[map_code] = &instruction[instruction_num];
             total++;
             if (type_info[inst_type].step == 0)
                 break;
         }
-        printf("\n");
+       // printf("\n");
     }
 
-    printf("%d codes mapped.\n", total);
+   // printf("%d codes mapped.\n", total);
 }
 

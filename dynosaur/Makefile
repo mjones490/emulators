@@ -1,6 +1,9 @@
 all : dynosaur lib8080.so lib6502.so
 
+
 .SECONDARY :
+rebuild : clean 
+	$(MAKE)
 
 dynosaur : dynosaur.o
 	$(CC) -Wall dynosaur.o -L../lib -lshell -lreadline -ldl -o dynosaur
@@ -9,6 +12,7 @@ dynosaur.o : dynosaur.c
 	$(CC) -Wall -I../include -c dynosaur.c -o dynosaur.o
 
 lib8080.so : 8080_plugin.o
+	$(MAKE) -C ../8080_cpu
 	$(CC) -Wall -shared -Wl,-soname,lib8080.so -L../lib 8080_plugin.o -l8080 -o lib8080.so
 
 8080_plugin.o : 8080_plugin.c
