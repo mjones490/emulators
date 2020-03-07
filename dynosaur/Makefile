@@ -25,5 +25,5 @@ lib6502.so : 6502_plugin.o
 	$(CC) -Wall -fPIC -I../include -I../6502_cpu -c 6502_plugin.c -o 6502_plugin.o
 
 clean: 
-	rm -v *.o *.so dynosaur
+	rm -vf *.o *.so dynosaur
 
