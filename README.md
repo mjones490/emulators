@@ -4,11 +4,9 @@ This is a project aimed at creating old CPU emulators,
 bus emulators, and any devices, such as keyboard and
 monitor emulators.
 
-### Test
+# Directories
 
-**This** is a test. *This* is another test.
-
-    printf("This is code.");
-    return;
+* **6502_cpu** MOS Technology 6502 CPU emulator
+* **8080_cpu** Intell 8080 CPU emulator
 
 
