@@ -25,6 +25,33 @@ could understand.  This resulting code ran much faster than code
 written in BASIC, but was also harder to understand for most
 people.  But it was whole lot of fun to work on.
 
+In the decades since, computers and the languages we use to program
+them have become much more sophisticated.  Gone are the days 
+of programming at the lowest level the machine has to offer. Well,
+almost.  Assembly language programming is still around, but it's 
+used mostly for embeded systems, device drivers, and real time
+systems.  And even then, C is still available for most of those
+tasks.
+
+So about ten years ago, I began longing for those days of 
+assembly programming.  I wanted to take complex tasks and break
+them down to their most rudimentery steps, type sequences of
+instructions to move a single byte from one place to another, 
+increment and decrement, shift bits left or right, and push
+and pull them to and from a stack.  I wanted to affect bits
+in the status register and branch according which bits
+were set or cleared.  I wanted to write clever routines that
+do really complex things in as few instructions as posible,
+and go over them and over them to _bum out_ as many instructions
+as possible.
+
+Problem was, I did not have any of the old equipment to expiriment
+on.  To that end, I set about writing a CPU emulator.  The first
+one I tried to write was a CPU of my own design, with an instruction
+set, register layout, and control system I dreamed up.  But it
+sucked.  There was no already written code that could run on it. And
+the instructions were really inconsistant with a clean system.
+
 ### Directories
 
 * **6502_cpu** MOS Technology 6502 CPU emulator
