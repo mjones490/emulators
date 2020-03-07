@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <malloc.h>
 #include <ctype.h>
-#include "shell.h"
 #include "8080_cpu.h"
 #include "cpu_types.h"
 #include "instructions.h"
@@ -99,7 +98,7 @@ static WORD disassemble_inst(WORD address)
 
 }
 
-static int disassemble(int argc, char **argv)
+int disassemble(int argc, char **argv)
 {
     int matched;
     int start;
@@ -135,7 +134,7 @@ static int disassemble(int argc, char **argv)
 char* flag_name[] = { "P  ", "M  ", "NZ ", "Z  ", "", "", "NA ", "A  ", 
     "", "", "PO ", "PE ", "", "", "NC ", "C  " };
 
-static void show_registers() 
+void show_registers() 
 {
     int i;
     BYTE flags = cpu_get_reg_PSW();
@@ -157,7 +156,7 @@ static void show_registers()
     disassemble_inst(cpu_get_reg_PC());
 }
 
-static int registers(int argc, char **argv)
+int registers(int argc, char **argv)
 {
     int tmp;
     WORD value = 0;
@@ -198,21 +197,21 @@ static int registers(int argc, char **argv)
     return 0;
 }
 
-static int step(int argc, char **argv)
+int step(int argc, char **argv)
 {
     cpu_execute_instruction();
     show_registers();
     return 0;
 }
 
-static int go(int argc, char **argv)
+int go(int argc, char **argv)
 {
     cpu_set_halted(false);
     //execute_instruction();
     return 0;
 }
 
-static int halt(int argc, char **argv)
+int halt(int argc, char **argv)
 {
     cpu_set_halted(true);
     return 0;
@@ -252,7 +251,7 @@ static void load_image(char* file_name, WORD address)
     return;
 }
 
-static int load(int argc, char **argv)
+int load(int argc, char **argv)
 {
     WORD address;
     char* filename;
@@ -272,7 +271,7 @@ static int load(int argc, char **argv)
     return 0;
 }
 
-static int breakpoint(int argc, char **argv)
+int breakpoint(int argc, char **argv)
 {
     int tmp;
 
@@ -283,15 +282,3 @@ static int breakpoint(int argc, char **argv)
 
     return 0;
 }
-
-void cpu_shell_load_commands()
-{
-    shell_add_command("registers", "View/change 8080 registers.", registers, false);
-    shell_add_command("step", "Execute single instruction.", step, true);
-    shell_add_command("disassemble", "Disassemble code.", disassemble, true);
-    shell_add_command("go", "Start program.", go, false);
-    shell_add_command("halt", "Halt CPU.", halt, false);
-    shell_add_command("load", "Load a binary file the given address.", load, false);
-    shell_add_command("breakpoint", "Set or view the PC breakpoint.", breakpoint, false);
-}
-
