@@ -52,6 +52,51 @@ set, register layout, and control system I dreamed up.  But it
 sucked.  There was no already written code that could run on it. And
 the instructions were really inconsistant with a clean system.
 
+It occured to me then that maybe I shouldn't try to make my own
+CPU, but to emulate ones that were already a thing, and that had 
+software already written for them.  But I wasn't sure which one
+to try.  I sat on the idea for a long time.  Then I saw a release
+of the code Steve "Woz" Wozniak had written for the Disk II boot
+sector for the Apple II line of computers.  It was written for the
+**MOS Technology 6502** CPU, and I had a lot of exposure to the Apple
+II computers as a kid, and had even done a little bit of assembly 
+on it.
+
+So, the **6502** was my choice.  I sat on the idea for a long time 
+more, revisiting it when I was bored or otherwise unocupied.  In my
+mind, I designed, redesigned, and redesigned how such code would 
+work.  Finally I sat down at my modern computer and began writting 
+it in C.  Before long I had _most_ of the instructions implemented,
+and had found a bit of test code to check and make sure they worked
+correctly.
+
+Once I'd take that code as far as I could at that point, I decided
+the ultimate test was to see if I could get and Apple II ROM binary
+to work on it.  But first I had to study up on how the Apple II worked,
+as the test would only be valid if I can output to a video emulator
+and input from the keyboard.  So I created a text video emulator using
+the SDL graphics library and a download of the Apple II character 
+generator ROM.
+
+Then I plugged in an Apple II ROM, and fired it up, and it immediately
+crashed.  I had more 6502 instructions to emulate.  Fired it up again, 
+got **APPLE ][** at the top of the screen, and then crashed.  Couple more
+rounds of fixing instruction that did not work quite right, fired it
+up again, got **APPLE ][** at the top, and a prompt with a blinking 
+cursor!  I typed in the old "Hello, World!" program, and ran it, and it 
+said "Hello, World!" right back!
+
+```
+]100 PRINT "HELLO, WORLD!"
+
+]RUN
+HELLO, WORLD!
+
+]
+```
+
+
+
 ### Directories
 
 * **6502_cpu** MOS Technology 6502 CPU emulator
