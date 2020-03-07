@@ -70,7 +70,7 @@ it in C.  Before long I had _most_ of the instructions implemented,
 and had found a bit of test code to check and make sure they worked
 correctly.
 
-Once I'd take that code as far as I could at that point, I decided
+Once I'd taken that code as far as I could at that point, I decided
 the ultimate test was to see if I could get and Apple II ROM binary
 to work on it.  But first I had to study up on how the Apple II worked,
 as the test would only be valid if I can output to a video emulator
@@ -87,6 +87,8 @@ cursor!  I typed in the old "Hello, World!" program, and ran it, and it
 said "Hello, World!" right back!
 
 ```
+               APPLE ][
+
 ]100 PRINT "HELLO, WORLD!"
 
 ]RUN
