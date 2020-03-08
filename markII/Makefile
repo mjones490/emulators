@@ -52,6 +52,9 @@ clean :
 	$(MAKE) -C ../shell clean
 	$(MAKE) -C ../6502_cpu clean
 
+rebuild : clean
+	$(MAKE)
+
 $(EXE) : $(EXE_OBJS)
 	$(CC) $(LFLAGS) $(EXE_OBJS) $(EXE_LIBS) -o $(EXE)
 

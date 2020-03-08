@@ -4,6 +4,8 @@
 #include <ctype.h>
 #include "shell.h"
 #include "6502_cpu.h"
+#include "cpu_types.h"
+#include "cpu_types.h"
 
 /**********************************************************
     Disassemble command
@@ -90,7 +92,7 @@ static const char *mnemonic_string[] = {
 static void disasm_instr(WORD *address)
 {
     int i;
-    BYTE code = shell_peek_byte(*address);
+    BYTE code = get_byte(*address);
     enum MNEMONIC mnemonic = cpu_get_mnemonic(code);
     const char *name = mnemonic_string[mnemonic];
     enum ADDRESS_MODE mode = cpu_get_address_mode(code);
@@ -108,10 +110,10 @@ static void disasm_instr(WORD *address)
     opr[1] = 0;
 
     if (2 <= inst_size) {
-        opr[0] = shell_peek_byte((*address)++);
+        opr[0] = get_byte((*address)++);
         printf("%02x ", opr[0]);
         if (3 == inst_size) {
-            opr[1] = shell_peek_byte((*address)++);
+            opr[1] = get_byte((*address)++);
             printf("%02x ", opr[1]);
         } else {
             printf("   ");
@@ -142,7 +144,7 @@ static void disasm_instr(WORD *address)
         printf(" ");
 }
 
-static int disassemble(int argc, char **argv)
+int disassemble(int argc, char **argv)
 {
     int matched;
     int start;
@@ -176,7 +178,7 @@ static int disassemble(int argc, char **argv)
 /**********************************************************
    Registers command
  **********************************************************/
-static void show_registers()
+void show_registers()
 {
     printf("a = %02x ", cpu_get_reg_A());
     printf("x = %02x ", cpu_get_reg_X());
@@ -187,7 +189,7 @@ static void show_registers()
     printf("\n");
 }
 
-static int registers(int argc, char **argv)
+int registers(int argc, char **argv)
 {
     int tmp;
     WORD value = 0;

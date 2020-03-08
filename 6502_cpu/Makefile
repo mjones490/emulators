@@ -37,6 +37,9 @@ clean :
 	rm -vf $(SHELL_LIB_OBJS) $(SHELL_LIB)
 	cd ../shell && $(MAKE) clean
 
+rebuild : clean
+	$(MAKE)
+
 $(SHELL_EXE) : $(SHELL_EXE_OBJS) $(LIB) ../lib/libshell.a
 	$(CC) $(LFLAGS) $(SHELL_EXE_OBJS) $(SHELL_EXE_LIBS) -o $(SHELL_EXE)
 
