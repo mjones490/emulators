@@ -63,18 +63,6 @@ static void cycle()
     }
 }
 
-void cpu_shell_load_commands()
-{
-    shell_add_command("registers", "View/change 8080 registers.", registers, false);
-    shell_add_command("step", "Execute single instruction.", step, true);
-    shell_add_command("disassemble", "Disassemble code.", disassemble, true);
-    shell_add_command("go", "Start program.", go, false);
-    shell_add_command("halt", "Halt CPU.", halt, false);
-    shell_add_command("load", "Load a binary file the given address.", load, false);
-    shell_add_command("breakpoint", "Set or view the PC breakpoint.", breakpoint, false);
-}
-
-
 int main(int argc, char **argv)
 {
     ram = malloc(ram_size);

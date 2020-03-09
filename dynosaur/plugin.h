@@ -16,9 +16,12 @@ struct cpu_interface {
     void (*finalize)();
     BYTE (*execute_instruction)();
     void (*show_registers)();
+    void (*set_register)(char *, WORD);
+    WORD (*disassemble)(WORD);
     void (*set_halted)(bool);
     bool (*get_halted)();
     void (*set_PC)(WORD);
+    WORD (*get_PC)();
     int num_shell_commands;
     struct shell_commands_t *shell_commands;
 };

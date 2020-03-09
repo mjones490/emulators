@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <malloc.h>
 #include <ctype.h>
+#include "shell.h"
 #include "8080_cpu.h"
 #include "cpu_types.h"
 #include "instructions.h"
@@ -20,7 +21,7 @@ char *reg8[] = { "b", "c", "d", "e", "h", "l", "m", "a" };
 char *reg16[] = { "b", "d", "h", "sp", "psw" };
 char *condition[] = { "nz", "z ", "nc", "c ", "po", "pe", "p ", "m " };
 
-static WORD disassemble_inst(WORD address)
+WORD disassemble_inst(WORD address)
 {
     BYTE code;
     char mnemonic[5];
@@ -153,65 +154,68 @@ void show_registers()
     if (cpu_state.total_clocks > 0) 
         printf("  %d clocks last used", cpu_state.total_clocks);
     printf("\n");
-    disassemble_inst(cpu_get_reg_PC());
 }
 
-int registers(int argc, char **argv)
+void set_register(char *reg_name, WORD value)
+{
+    if (0 == strncmp(reg_name, "a", 2))
+        cpu_set_reg_A(lo(value));
+    else if (0 == strncmp(reg_name, "b", 2))
+        cpu_set_reg_B(lo(value));
+    else if (0 == strncmp(reg_name, "c", 2))
+        cpu_set_reg_C(lo(value));
+    else if (0 == strncmp(reg_name, "bc", 3))
+        cpu_set_reg_BC(value);
+    else if (0 == strncmp(reg_name, "d", 2))
+        cpu_set_reg_D(lo(value));
+    else if (0 == strncmp(reg_name, "e", 2))
+       cpu_set_reg_E(lo(value));
+    else if (0 == strncmp(reg_name, "de", 3))
+        cpu_set_reg_DE(value);
+    else if (0 == strncmp(reg_name, "h", 2))
+        cpu_set_reg_H(lo(value));
+    else if (0 == strncmp(reg_name, "l", 2))
+        cpu_set_reg_L(lo(value));
+    else if (0 == strncmp(reg_name, "hl", 3))
+        cpu_set_reg_HL(value);
+    else if (0 == strncmp(reg_name, "sp", 3))
+        cpu_set_reg_SP(value);
+    else if (0 == strncmp(reg_name, "pc", 3))
+        cpu_set_reg_PC(value);
+}
+
+static int registers(int argc, char **argv)
 {
     int tmp;
-    WORD value = 0;
     char *reg_name;
     int arg_no = 1;
 
     while (argc > arg_no) {
         reg_name = argv[arg_no++];
-        if (1 == sscanf(argv[arg_no++], "%4x", &tmp))
-            value = (WORD) tmp;
-        if (0 == strncmp(reg_name, "a", 2))
-            cpu_set_reg_A(lo(value));
-        else if (0 == strncmp(reg_name, "b", 2))
-            cpu_set_reg_B(lo(value));
-        else if (0 == strncmp(reg_name, "c", 2))
-            cpu_set_reg_C(lo(value));
-        else if (0 == strncmp(reg_name, "bc", 3))
-            cpu_set_reg_BC(value);
-        else if (0 == strncmp(reg_name, "d", 2))
-            cpu_set_reg_D(lo(value));
-        else if (0 == strncmp(reg_name, "e", 2))
-            cpu_set_reg_E(lo(value));
-        else if (0 == strncmp(reg_name, "de", 3))
-            cpu_set_reg_DE(value);
-        else if (0 == strncmp(reg_name, "h", 2))
-            cpu_set_reg_H(lo(value));
-        else if (0 == strncmp(reg_name, "l", 2))
-            cpu_set_reg_L(lo(value));
-        else if (0 == strncmp(reg_name, "hl", 3))
-            cpu_set_reg_HL(value);
-        else if (0 == strncmp(reg_name, "sp", 3))
-            cpu_set_reg_SP(value);
-        else if (0 == strncmp(reg_name, "pc", 3))
-            cpu_set_reg_PC(value);
+        if (1 == sscanf(argv[arg_no++], "%4x", &tmp)) 
+            set_register(reg_name, (WORD) tmp);
     }
     
     show_registers();
     return 0;
 }
 
-int step(int argc, char **argv)
+static int step(int argc, char **argv)
 {
     cpu_execute_instruction();
     show_registers();
+    disassemble_inst(cpu_get_reg_PC());
     return 0;
 }
 
-int go(int argc, char **argv)
+static int go(int argc, char **argv)
 {
     cpu_set_halted(false);
     //execute_instruction();
     return 0;
 }
 
-int halt(int argc, char **argv)
+static int halt(int argc, char **argv)
 {
     cpu_set_halted(true);
     return 0;
@@ -239,7 +243,7 @@ static void load_image(char* file_name, WORD address)
     }    
 
     buffer = malloc(sb.st_size);
-    printf("Reading %d bytes...\n", sb.st_size);
+    printf("Reading %ld bytes...\n", sb.st_size);
     bytes_read = read(fd, buffer, sb.st_size);
 
     for (i = 0; i < bytes_read; i++)
@@ -251,7 +255,7 @@ static void load_image(char* file_name, WORD address)
     return;
 }
 
-int load(int argc, char **argv)
+static int load(int argc, char **argv)
 {
     WORD address;
     char* filename;
@@ -261,7 +265,7 @@ int load(int argc, char **argv)
         return 0;
     }
 
-    if (1 != sscanf(argv[1], "%4x", &address)) {
+    if (1 != sscanf(argv[1], "%4hx", &address)) {
         printf("Invalid load address.\n");
     }
 
@@ -271,7 +275,7 @@ int load(int argc, char **argv)
     return 0;
 }
 
-int breakpoint(int argc, char **argv)
+static int breakpoint(int argc, char **argv)
 {
     int tmp;
 
@@ -281,4 +285,15 @@ int breakpoint(int argc, char **argv)
     printf("Breakpoint set at %04xh.\n", cpu_state.breakpoint);
 
     return 0;
+}
+
+void cpu_shell_load_commands()
+{
+    shell_add_command("registers", "View/change 8080 registers.", registers, false);
+    shell_add_command("step", "Execute single instruction.", step, true);
+    shell_add_command("disassemble", "Disassemble code.", disassemble, true);
+    shell_add_command("go", "Start program.", go, false);
+    shell_add_command("halt", "Halt CPU.", halt, false);
+    shell_add_command("load", "Load a binary file the given address.", load, false);
+    shell_add_command("breakpoint", "Set or view the PC breakpoint.", breakpoint, false);
 }

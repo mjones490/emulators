@@ -21,22 +21,25 @@ void finalize()
 }
 
 struct cpu_interface interface;
-
+/*
 struct shell_commands_t shell_commands[] = {
     { "registers", "View/Change 8080 registers.", registers, false },
     { "dissassemble", "Disassemble 8080 instructions.", disassemble, true }
 };
-
+*/
 struct cpu_interface *get_cpu_interface()
 {
     interface.initialize = initialize;
     interface.finalize = finalize;
     interface.execute_instruction = cpu_execute_instruction;
     interface.show_registers = show_registers;
+    interface.set_register = set_register;
+    interface.disassemble = disassemble_inst;
     interface.set_halted = cpu_set_halted;
     interface.get_halted = cpu_get_halted;
     interface.set_PC = cpu_set_reg_PC;
-    interface.shell_commands = shell_commands;
-    interface.num_shell_commands = SHELL_COMMANDS_CNT(shell_commands);
+    interface.get_PC = cpu_get_reg_PC;
+    interface.shell_commands = NULL; // shell_commands;
+    interface.num_shell_commands = 0; // SHELL_COMMANDS_CNT(shell_commands);
     return &interface;
 }

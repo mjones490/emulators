@@ -89,7 +89,7 @@ static const char *mnemonic_string[] = {
     MAKE_MNEMONIC_STRING(TXS)    ///< Transfer X to Stack Pointer
 };
 
-static void disasm_instr(WORD *address)
+void disasm_instr(WORD *address)
 {
     int i;
     BYTE code = get_byte(*address);
@@ -144,7 +144,7 @@ static void disasm_instr(WORD *address)
         printf(" ");
 }
 
-int disassemble(int argc, char **argv)
+static int disassemble(int argc, char **argv)
 {
     int matched;
     int start;
@@ -189,26 +189,29 @@ void show_registers()
     printf("\n");
 }
 
-int registers(int argc, char **argv)
+void set_register(char *reg_name, WORD value)
+{
+    if (0 == strncmp(reg_name, "a", 1))
+        cpu_set_reg_A(lo(value));
+    else if (0 == strncmp(reg_name, "x", 1))
+        cpu_set_reg_X(lo(value));
+    else if (0 == strncmp(reg_name, "y", 1))
+        cpu_set_reg_Y(lo(value));
+    else if (0 == strncmp(reg_name, "sp", 1))
+        cpu_set_reg_SP( lo(value));
+    else if (0 == strncmp(reg_name, "pc", 2))
+        cpu_set_reg_PC(value);
+}
+
+static int registers(int argc, char **argv)
 {
     int tmp;
-    WORD value = 0;
     char *reg_name;
 
     if (argc == 3) {
         reg_name = argv[1];
         if (1 == sscanf(argv[2], "%4x", &tmp))
-            value = (WORD) tmp;    
-        if (0 == strncmp(reg_name, "a", 1))
-            cpu_set_reg_A(lo(value));
-        else if (0 == strncmp(reg_name, "x", 1))
-            cpu_set_reg_X(lo(value));
-        else if (0 == strncmp(reg_name, "y", 1))
-            cpu_set_reg_Y(lo(value));
-        else if (0 == strncmp(reg_name, "sp", 1))
-            cpu_set_reg_SP( lo(value));
-        else if (0 == strncmp(reg_name, "pc", 2))
-            cpu_set_reg_PC(value);
+            set_register(reg_name, (WORD) tmp);    
     }
 
     show_registers();
