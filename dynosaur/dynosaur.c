@@ -57,10 +57,16 @@ void unload_plugin(void *handle)
     dlclose(handle);
 }
 
+WORD breakpoint = 0;
 static void execute_instruction()
 {
-    if (!cpu->get_halted())
+    if (!cpu->get_halted()) {
         cpu->execute_instruction();
+        if (cpu->get_PC() == breakpoint) {
+            printf("Breakpoint reached.\n");
+            cpu->set_halted(true);
+        }
+    }
 }
 
 static void cycle()
@@ -103,6 +109,20 @@ int go(int argc, char **argv)
 int halt(int argc, char **argv)
 {
     cpu->set_halted(true);
+    return 0;
+}
+
+static int set_breakpoint(int argc, char **argv)
+{
+    WORD temp;
+
+    if (argc == 2) {
+        if (1 == sscanf(argv[1], "%04hx", &temp))
+            breakpoint = temp;
+    }
+
+    printf("Breakpoint set at %04x.\n", breakpoint);
+
     return 0;
 }
 
@@ -159,8 +179,9 @@ void shell_load_commands()
     shell_add_command("halt", "Halt CPU", halt, false);
     shell_add_command("registers", "View/Set CPU registers", registers, false);
     shell_add_command("disassemble", "Disassemble instructions", disassemble, true);
+    shell_add_command("breakpoint", "View/Set breakpoint", set_breakpoint, false);
 }
-
+    
 int main(int argv, char **argc)
 {
     void *plugin;

@@ -6,17 +6,7 @@
 #include "6502_shell.h"
 #include "6502_cpu.h"
 
-void initialize(accessor_t accessor)
-{
-    cpu_init(accessor);
-}
-
-void finalize()
-{
-    printf("\n");
-}
-
-void set_halted(bool halted)
+static void set_halted(bool halted)
 {
     if (halted)
         cpu_set_signal(SIG_HALT);
@@ -24,12 +14,12 @@ void set_halted(bool halted)
         cpu_clear_signal(SIG_HALT);
 }
 
-bool get_halted()
+static bool get_halted()
 {
     return cpu_get_signal(SIG_HALT);
 }
 
-WORD disassemble(WORD address)
+static WORD disassemble(WORD address)
 {
     disasm_instr(&address);
     printf("\n");
@@ -44,6 +34,17 @@ struct shell_commands_t shell_commands[] = {
     { "disassemble", "Dissassemble 6502 instructions", disassemble, true }
 };
 */
+
+void initialize(accessor_t accessor)
+{
+    cpu_init(accessor);
+    set_halted(true);
+}
+
+void finalize()
+{
+    printf("\n");
+}
 
 struct cpu_interface *get_cpu_interface()
 {
