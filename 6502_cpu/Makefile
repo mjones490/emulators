@@ -43,10 +43,13 @@ $(SHELL_EXE) : $(SHELL_EXE_OBJS) $(LIB) ../lib/libshell.a
 %.o : %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-%.a : $(LIB_OBJS) $(SHELL_LIB_OBJS)
+$(LIB) : $(LIB_OBJS)
 	$(AR) crv $(LIB) $(LIB_OBJS)
-	$(AR) crv $(SHELL_LIB) $(SHELL_LIB_OBJS)
 	mkdir -pv $(LIB_DIR)
 	$(CP) -v $(LIB) $(LIB_DIR)
+
+
+$(SHELL_LIB) : $(SHELL_LIB_OBJS)
+	$(AR) crv $(SHELL_LIB) $(SHELL_LIB_OBJS)
 	$(CP) -v $(SHELL_LIB) $(LIB_DIR)
 
