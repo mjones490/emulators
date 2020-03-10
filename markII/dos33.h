@@ -1,7 +1,7 @@
 #ifndef __DOS33_H
 #define __DOS33_H
 //#include "../6502.h"
-#include "../disk.h"
+#include "disk.h"
 
 BYTE read_byte(struct drive_t *drive);
 void write_byte(struct drive_t *drive, BYTE byte);

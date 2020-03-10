@@ -24,10 +24,10 @@ EXE_LIBS := 6502 \
             m
 
 INC_DIR = ../include \
-          Stuff \
+          ../../Stuff \
           /usr/include/SDL2
 
-LIB_DIR = Stuff ../lib . 
+LIB_DIR = ../../Stuff ../lib . 
 
 CFLAGS = -Wall -g -O0 -MMD -MP -D_REENTRANT  $(INC_DIR:%=-I%)
 LFLAGS = -Wall $(LIB_DIR:%=-L%)
@@ -57,13 +57,6 @@ $(EXE) : $(EXE_OBJS)
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c $< -o $@
-
-%.a : $(LIB_OBJS) $(SHELL_LIB_OBJS)
-	$(AR) crv $(LIB) $(LIB_OBJS)
-	$(AR) crv $(SHELL_LIB) $(SHELL_LIB_OBJS)
-	mkdir -pv $(LIB_DIR)
-	$(CP) -v $(LIB) $(LIB_DIR)
-	$(CP) -v $(SHELL_LIB) $(LIB_DIR)
 
 docs :
 	doxygen Doxyfile
