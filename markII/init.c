@@ -48,8 +48,11 @@ static BYTE output_soft_switch(BYTE switch_no, bool read, BYTE value)
 void init_all()
 {
     init_logging(); 
-    init_config();
-    set_log_level();
+    init_config("markII.cfg");
+    char * ll = get_config_string("LOGGING", "LOG_LEVEL");
+    LOG_DBG(ll);
+    set_log_level(ll);
+    LOG_DBG("Log set.\n");
        
     init_bus();
     init_mmu();
