@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include "logging.h"
-#include "config.h"
 
 static char level_name[5][4];
 static enum log_type log_level = INF;
@@ -33,12 +32,11 @@ void print_log(enum log_type ltype, char *c_filename, const char *function,
     va_end(args);
 }
 
-void set_log_level()
+void set_log_level(char *log_level_name)
 {
     int i;
-    char *cfg_level_name = get_config_string("LOGGING", "LOG_LEVEL");
     for (i = FTL; i <= DBG; ++i) {
-        if (strncmp(cfg_level_name, level_name[i], 3) == 0)
+        if (strncmp(log_level_name, level_name[i], 3) == 0)
             log_level = i;
     }
 }

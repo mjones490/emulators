@@ -1,13 +1,11 @@
 EXE := markII
 EXE_OBJS := bus \
-            config \
             cpu_iface \
             disk \
             disk_iface \
             dos33 \
             init \
             keyboard \
-            logging \
             markII_commands \
             mmu \
             slot \
@@ -16,6 +14,7 @@ EXE_OBJS := bus \
 
 EXE_LIBS := 6502 \
             6502_shell \
+            utils \
             Stuff \
             shell \
             readline \
@@ -43,7 +42,8 @@ all : build_libs $(EXE)
 build_libs :
 	$(MAKE) -C ../shell
 	$(MAKE) -C ../6502_cpu
-   
+	$(MAKE) -C ../utilities
+
 .SECONDARY :
  
 clean :

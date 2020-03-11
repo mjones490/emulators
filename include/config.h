@@ -3,7 +3,7 @@
 //#include <SDL.h> // For Uint32
 
 typedef unsigned int Uint32;
-void init_config();
+void init_config(char *config_filename);
 
 int get_config_int(char *section_name, char *key_name);
 Uint32 get_config_hex(char *section_name, char *key_name);

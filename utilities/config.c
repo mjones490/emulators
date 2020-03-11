@@ -87,21 +87,16 @@ char *split_string(char *string, char *buffer, char splitter)
     return string;
 }
 
-void init_config()
+void init_config(char *cfg_filename)
 {
     char *message = NULL;   
-    LOG_INF("Loading configuration file...\n");
-    config = config_open("markII.cfg");
+    LOG_INF("Loading configuration file %s...\n", cfg_filename);
+    config = config_open(cfg_filename);
     if (config == NULL) {
         LOG_ERR("Error opening config.\n");
         return;
     }
-
-    message = get_config_string("MARKII", "HELLO");
-    if (message) {
-        LOG_INF("A message:\n");
-        LOG_INF("%s\n", message);
-    }
+    LOG_INF("Loaded!\n");
 }
 
 void finalize_config()
