@@ -1,15 +1,15 @@
 all : dynosaur lib8080.so lib6502.so
 
-
 .SECONDARY :
 dynosaur : dynosaur.o shell_commands.o
-	$(CC) -Wall dynosaur.o shell_commands.o -L../lib -lshell -lreadline -ldl -o dynosaur
+	$(MAKE) -C ../utilities
+	$(CC) -Wall dynosaur.o shell_commands.o -L../lib -L../../Stuff -lutils -lStuff -lshell -lreadline -ldl -o dynosaur
 
 dynosaur.o : dynosaur.c
-	$(CC) -Wall -I../include -c dynosaur.c -o dynosaur.o
+	$(CC) -Wall -g -I../include -c dynosaur.c -o dynosaur.o
 
 shell_commands.o : shell_commands.c
-	$(CC) -Wall -I../include -c shell_commands.c -o shell_commands.o
+	$(CC) -Wall -g -I../include -c shell_commands.c -o shell_commands.o
 
 lib8080.so : 8080_plugin.o
 	$(MAKE) -C ../8080_cpu

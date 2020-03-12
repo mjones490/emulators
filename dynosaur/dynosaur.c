@@ -8,6 +8,14 @@
 #include "shell.h"
 #include "plugin.h"
 #include "shell_commands.h"
+#include "logging.h"
+#include "config.h"
+
+static struct {
+    char *cpu_config;
+    char *cpu_name;
+    char *cpu_plugin;
+} config;
 
 struct cpu_interface *cpu;
 
@@ -26,13 +34,13 @@ BYTE ram_accessor(WORD address, bool read, BYTE value)
     return value;
 }
 
-void *load_plugin(char *plugin_name)
+void *load_plugin()
 {
     void *handle;
     char *error;
     int i;
 
-    handle = dlopen(plugin_name, RTLD_LAZY);
+    handle = dlopen(config.cpu_plugin, RTLD_LAZY);
     if (handle == NULL) {
         fprintf(stderr, "dynosaur: %s\n", dlerror());
         exit(EXIT_FAILURE);
@@ -77,27 +85,45 @@ static void cycle()
     execute_instruction();
 }
 
+void load_config(char *param)
+{
+    init_config("dynosaur.cfg");
+    if (param == NULL) {
+        config.cpu_config = get_config_string("DYNOSAUR", "DEFAULT_CPU");
+        if (config.cpu_config == NULL)
+            LOG_FTL("Cannot determine default configuration.\n");
+    } else {
+        config.cpu_config = malloc(32);
+        sprintf(config.cpu_config, "%s_CPU", param);
+    }
+
+    config.cpu_name = get_config_string(config.cpu_config, "NAME");
+    
+    if (config.cpu_name == NULL)
+        LOG_ERR("No CPU name.\n");
+    else
+        LOG_INF("CPU Name is %s.\n", config.cpu_name);
+
+    config.cpu_plugin = get_config_string(config.cpu_config, "PLUGIN");
+    if (config.cpu_plugin == NULL)
+        LOG_FTL("Cannot determine CPU plugin file name.\n");
+    LOG_INF("CPU plugin file name = %s.\n", config.cpu_plugin);
+}
+
 int main(int argv, char **argc)
 {
     void *plugin;
-    char soname[256];
-    char prompt[256];
 
     printf("Dynosaur\n");
-
-    if (argv == 2) {
-        sprintf(soname, "./lib%s.so", argc[1]);
-        sprintf(prompt, "dynamic %s", argc[1]);
-    } else {
-        strcpy(soname, "./lib8080.so");
-        strcpy(prompt, "dynamic 8080");
-    }
+   
+    init_logging();
     
+    load_config(argc[1]);
     shell_set_accessor(ram_accessor);
-    shell_initialize(prompt);
+    shell_initialize("dynosaur");
     shell_load_dynosaur_commands();
 
-    plugin = load_plugin(soname);
+    plugin = load_plugin();
     ram = malloc(ram_size);
     cpu->initialize(ram_accessor);
     shell_set_loop_cb(cycle);
