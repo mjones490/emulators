@@ -12,19 +12,19 @@
 #include "config.h"
 
 static struct {
-    char *cpu_config;
+    char cpu_config[32];
     char *cpu_name;
     char *cpu_plugin;
+    int ram_size;
 } config;
 
 struct cpu_interface *cpu;
 
 BYTE *ram;
-const int ram_size = 8192;
 
 BYTE ram_accessor(WORD address, bool read, BYTE value)
 {
-    if (address > ram_size)
+    if (address >= config.ram_size)
         value = 0;
     else if (read)
         value = ram[address];
@@ -85,16 +85,18 @@ static void cycle()
     execute_instruction();
 }
 
-void load_config(char *param)
+void load_config(char *config_name)
 {
+    char *temp;
+
     init_config("dynosaur.cfg");
-    if (param == NULL) {
-        config.cpu_config = get_config_string("DYNOSAUR", "DEFAULT_CPU");
+    if (config_name == NULL) {
+        temp = get_config_string("DYNOSAUR", "DEFAULT_CPU");
         if (config.cpu_config == NULL)
             LOG_FTL("Cannot determine default configuration.\n");
+        strncpy(config.cpu_config, temp, 32);
     } else {
-        config.cpu_config = malloc(32);
-        sprintf(config.cpu_config, "%s_CPU", param);
+        sprintf(config.cpu_config, "%s_CPU", config_name);
     }
 
     config.cpu_name = get_config_string(config.cpu_config, "NAME");
@@ -108,30 +110,47 @@ void load_config(char *param)
     if (config.cpu_plugin == NULL)
         LOG_FTL("Cannot determine CPU plugin file name.\n");
     LOG_INF("CPU plugin file name = %s.\n", config.cpu_plugin);
+
+    config.ram_size = get_config_hex("DYNOSAUR", "RAM_SIZE");
+    if (config.ram_size == 0) {
+        LOG_WRN("RAM size not specified.  Assuming 0x8000.\n");
+        config.ram_size = 0x8000;
+    }
 }
 
-int main(int argv, char **argc)
-{
-    void *plugin;
+void *plugin;
 
-    printf("Dynosaur\n");
-   
+static void init(char *config_name)
+{
     init_logging();
     
-    load_config(argc[1]);
+    load_config(config_name);
     shell_set_accessor(ram_accessor);
     shell_initialize("dynosaur");
     shell_load_dynosaur_commands();
 
     plugin = load_plugin();
-    ram = malloc(ram_size);
+    ram = malloc(config.ram_size);
     cpu->initialize(ram_accessor);
     shell_set_loop_cb(cycle);
-    shell_loop();
+}
+
+static void finalize()
+{
     cpu->finalize();
     shell_finalize();
     free(ram);
     unload_plugin(plugin);
+}
+
+int main(int argv, char **argc)
+{
+
+    printf("Dynosaur\n");
+   
+    init(argc[1]);
+    shell_loop();
+    finalize();
 
     return 0;
 }

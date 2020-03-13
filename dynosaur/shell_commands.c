@@ -3,8 +3,65 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "types.h"
 #include "dynosaur.h"
+
+static void load_image(char* file_name, WORD address)
+{
+    int fd;
+    struct stat sb;
+    int bytes_read;
+    BYTE* buffer;
+    int i;
+
+    // Open file
+    fd = open(file_name, O_RDONLY);
+    if (-1 == fd) {
+        printf("Error opening file %s.\n", file_name);
+        return;
+    }
+
+    if (-1 == fstat(fd, &sb)) {
+        printf("Could not determine size of file.\n");
+        close(fd);
+        return;
+    }    
+
+    buffer = malloc(sb.st_size);
+    printf("Reading %ld bytes...\n", sb.st_size);
+    bytes_read = read(fd, buffer, sb.st_size);
+
+    for (i = 0; i < bytes_read; i++)
+        put_byte(address + i, *(buffer + i));
+
+    free(buffer);
+    printf("%d bytes read.\n", bytes_read);
+    close(fd);
+    return;
+}
+
+static int load(int argc, char **argv)
+{
+    WORD address;
+    char* filename;
+
+    if (3 > argc) {
+        printf("load addr filename\n");
+        return 0;
+    }
+
+    if (1 != sscanf(argv[1], "%4hx", &address)) {
+        printf("Invalid load address.\n");
+    }
+
+    filename = argv[2];
+    load_image(filename, address);
+
+    return 0;
+}
 
 static int step(int argc, char **argv)
 {
@@ -110,5 +167,6 @@ void shell_load_dynosaur_commands()
     shell_add_command("registers", "View/Set CPU registers", registers, false);
     shell_add_command("disassemble", "Disassemble instructions", disassemble, true);
     shell_add_command("breakpoint", "View/Set breakpoint", set_breakpoint, false);
+    shell_add_command("load", "Load a binary image file into RAM", load, false);
 }
     
