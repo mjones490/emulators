@@ -8,6 +8,9 @@ all : $(BUILD_PROJECTS)
 
 clean : $(CLEAN_PROJECTS)
 
+rebuild : clean
+	$(MAKE)
+
 %clean : %
 	$(MAKE) -C $^ clean
 
