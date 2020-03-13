@@ -16,6 +16,7 @@ static struct {
     char *cpu_name;
     char *cpu_plugin;
     int ram_size;
+    char *bin_dir;
 } config;
 
 struct cpu_interface *cpu;
@@ -90,6 +91,9 @@ void load_config(char *config_name)
     char *temp;
 
     init_config("dynosaur.cfg");
+    temp = get_config_string("LOGGING", "LOG_LEVEL");
+    set_log_level(temp);
+
     if (config_name == NULL) {
         temp = get_config_string("DYNOSAUR", "DEFAULT_CPU");
         if (config.cpu_config == NULL)
@@ -116,6 +120,10 @@ void load_config(char *config_name)
         LOG_WRN("RAM size not specified.  Assuming 0x8000.\n");
         config.ram_size = 0x8000;
     }
+
+    config.bin_dir = get_config_string(config.cpu_config, "DIRECTORY");
+    if (config.bin_dir == NULL)
+        LOG_WRN("Binary directory not specified.  Will use current directory.\n");
 }
 
 void *plugin;
@@ -126,12 +134,20 @@ static void init(char *config_name)
     
     load_config(config_name);
     shell_set_accessor(ram_accessor);
-    shell_initialize("dynosaur");
-    shell_load_dynosaur_commands();
 
     plugin = load_plugin();
     ram = malloc(config.ram_size);
     cpu->initialize(ram_accessor);
+
+    if (config.bin_dir != NULL) {
+        if(chdir(config.bin_dir) == -1)
+            LOG_ERR("Error changing to %s.\n", config.bin_dir);
+        else
+            LOG_INF("Changed to %s.\n", config.bin_dir);
+    }
+
+    shell_initialize("dynosaur");
+    shell_load_dynosaur_commands();
     shell_set_loop_cb(cycle);
 }
 
@@ -145,7 +161,6 @@ static void finalize()
 
 int main(int argv, char **argc)
 {
-
     printf("Dynosaur\n");
    
     init(argc[1]);

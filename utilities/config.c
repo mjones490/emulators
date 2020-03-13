@@ -90,13 +90,10 @@ char *split_string(char *string, char *buffer, char splitter)
 void init_config(char *cfg_filename)
 {
     char *message = NULL;   
-    LOG_INF("Loading configuration file %s...\n", cfg_filename);
     config = config_open(cfg_filename);
     if (config == NULL) {
-        LOG_ERR("Error opening config.\n");
-        return;
+        LOG_FTL("Error opening %s.\n", cfg_filename);
     }
-    LOG_INF("Loaded!\n");
 }
 
 void finalize_config()
