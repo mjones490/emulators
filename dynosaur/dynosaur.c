@@ -10,6 +10,7 @@
 #include "shell_commands.h"
 #include "logging.h"
 #include "config.h"
+#include "video.h"
 
 static struct {
     char cpu_config[32];
@@ -146,6 +147,8 @@ static void init(char *config_name)
             LOG_INF("Changed to %s.\n", config.bin_dir);
     }
 
+    init_video();
+
     shell_initialize("dynosaur");
     shell_load_dynosaur_commands();
     shell_set_loop_cb(cycle);
@@ -155,6 +158,9 @@ static void finalize()
 {
     cpu->finalize();
     shell_finalize();
+    
+    finalize_video();
+
     free(ram);
     unload_plugin(plugin);
 }
