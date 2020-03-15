@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include "types.h"
 #include "logging.h"
+#include "config.h"
 
 struct {
     SDL_Window      *window;
@@ -11,6 +12,9 @@ struct {
     Uint16          *pixels;
     BYTE            vdp_ram[24][40];
     Uint32          timer;
+    char            *title;
+    int             width;
+    int             height;
 } video;
 
 BYTE charset[][8] = {
@@ -130,22 +134,47 @@ void refresh_video()
 
 }
 
+static void load_config()
+{
+    char buf[256];
+    char *tmp;
+
+    tmp = get_config_string("VIDEO", "SCREEN_SIZE");
+    if (NULL != tmp) {
+        tmp = split_string(tmp, buf, 'x');
+        video.width = string_to_int(buf);
+        video.height = string_to_int(tmp);
+    } else {
+        LOG_WRN("SCREEN_SIZE not found.  Setting to default.\n");
+    }
+    LOG_INF("Screen size = %dx%d.\n", video.width, video.height);
+
+    video.title = get_config_string("VIDEO", "TITLE");
+    if (NULL == video.title) {
+        LOG_WRN("TITLE not found.  Setting to default.\n");
+        video.title = "";
+    }
+    LOG_INF("Title = \"%s\".\n", video.title);
+}
+
 BYTE *init_video()
 {
     LOG_INF("Initilizing video.\n");
+    load_config();
     
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         LOG_ERR("Error initializing SDL: %s", SDL_GetError());
         return 0;
     }
 
-    video.window = SDL_CreateWindow("Dynamic", SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED, 320 * 3, 192 * 3, SDL_WINDOW_SHOWN);
+    video.window = SDL_CreateWindow(video.title, SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED, video.width, video.height, SDL_WINDOW_SHOWN);
     if (video.window == NULL) {
         LOG_ERR("Error creating SDL window: %s", SDL_GetError());
         return 0;
     }
 
+    SDL_RaiseWindow(video.window);
     video.renderer = SDL_CreateRenderer(video.window, -1, 
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
     if (video.window == NULL) {

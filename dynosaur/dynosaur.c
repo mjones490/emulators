@@ -89,7 +89,7 @@ static void execute_instruction()
 
 static void cycle()
 {
-    usleep(10);
+//    usleep(10);
     execute_instruction();
     refresh_video();
 }
