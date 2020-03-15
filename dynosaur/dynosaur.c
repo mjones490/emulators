@@ -23,15 +23,22 @@ static struct {
 struct cpu_interface *cpu;
 
 BYTE *ram;
+BYTE *vdp_ram;
 
 BYTE ram_accessor(WORD address, bool read, BYTE value)
 {
-    if (address >= config.ram_size)
-        value = 0;
-    else if (read)
-        value = ram[address];
-    else
-        ram[address] = value;
+    if (address < config.ram_size) {
+        if (read)
+            value = ram[address];
+        else
+            ram[address] = value;
+    } else if (address >= 0x8000 && address < 0x83c0) {
+        if (read) {
+            value = vdp_ram[address - 0x8000];
+        } else {
+            vdp_ram[address - 0x8000] = value;
+        }
+    }
 
     return value;
 }
@@ -83,8 +90,8 @@ static void execute_instruction()
 static void cycle()
 {
     usleep(10);
-
     execute_instruction();
+    refresh_video();
 }
 
 void load_config(char *config_name)
@@ -147,7 +154,7 @@ static void init(char *config_name)
             LOG_INF("Changed to %s.\n", config.bin_dir);
     }
 
-    init_video();
+    vdp_ram = init_video();
 
     shell_initialize("dynosaur");
     shell_load_dynosaur_commands();
