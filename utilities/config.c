@@ -8,6 +8,11 @@
 
 struct config_struct *config;
 
+struct section_struct *get_config_section(char *section_name)
+{
+    return find_section(config->section, section_name);
+}
+
 char *get_config_string(char *section_name, char *key_name)
 {
     struct section_struct *section;

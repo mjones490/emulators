@@ -12,7 +12,7 @@ shell_commands.o : shell_commands.c
 	$(CC) -Wall -g -I../include -c shell_commands.c -o shell_commands.o
 
 video.o : video.c
-	$(CC) -Wall -g -I../include -c video.c -o video.o
+	$(CC) -Wall -g -I../include -I../../Stuff -c video.c -o video.o
 
 lib8080.so : 8080_plugin.o
 	$(MAKE) -C ../8080_cpu

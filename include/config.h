@@ -5,6 +5,7 @@
 typedef unsigned int Uint32;
 void init_config(char *config_filename);
 
+struct section_struct *get_config_section(char *section_name);
 int get_config_int(char *section_name, char *key_name);
 Uint32 get_config_hex(char *section_name, char *key_name);
 char *get_config_string(char *section_name, char *key_name);
