@@ -12,9 +12,12 @@ struct {
     SDL_Texture     *texture;
     Uint16          *pixels;
     struct {
-        BYTE        screen[24][40];
-        BYTE        charset[256][8];
+        BYTE        screen[24][40];  // 8000
+        BYTE        color_table[16]; // 83c0
+        BYTE        free_space[48];  // 83d0
+        BYTE        pattern_table[256][8]; // 8400
     } vdp_ram;
+    Uint16          color[16];
     Uint32          timer;
     char            *title;
     int             width;
@@ -26,12 +29,14 @@ void draw_char(int row, int col, BYTE char_no)
 {
     int i, j;
     BYTE pattern;
+    BYTE foreground = video.vdp_ram.color_table[char_no >> 3] >> 4;
+    BYTE background = video.vdp_ram.color_table[char_no >> 3] & 0x0f;
     row *= 8;
     col *= 8;
     for (i = 0; i < 8; i++) {
-        pattern = video.vdp_ram.charset[char_no][i];
+        pattern = video.vdp_ram.pattern_table[char_no][i];
         for (j = 0; j < 8; j++) {
-            video.pixels[((row + i) * 320) + (j + col)] = (pattern & 0x80) ? 65535 : 0;
+            video.pixels[((row + i) * 320) + (j + col)] =  video.color[(pattern & 0x80) ? foreground : background];
             pattern <<= 1;
         }
     }
@@ -90,7 +95,7 @@ static void load_char_set()
             sscanf(key->value, "%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX", 
                 &hex[0], &hex[1], &hex[2], &hex[3],
                 &hex[4], &hex[5], &hex[6], &hex[7]);
-            memcpy(video.vdp_ram.charset[char_code], hex, 8);
+            memcpy(video.vdp_ram.pattern_table[char_code], hex, 8);
         }
     }
 }
@@ -121,6 +126,7 @@ static void load_config()
 
 BYTE *init_video()
 {
+    SDL_PixelFormat *format;
     LOG_INF("Initilizing video.\n");
     load_config();
     
@@ -149,13 +155,33 @@ BYTE *init_video()
     SDL_RenderPresent(video.renderer);
 
     video.texture = SDL_CreateTexture(video.renderer, 
-        SDL_PIXELFORMAT_RGBA4444, SDL_TEXTUREACCESS_STREAMING, 320, 192);
+        SDL_PIXELFORMAT_RGB444, SDL_TEXTUREACCESS_STREAMING, 320, 192);
 
     if (video.texture == NULL) { 
         LOG_ERR("Error creating SDL texture: %s", SDL_GetError());
         return 0;
     }
 
+    format = SDL_AllocFormat(SDL_PIXELFORMAT_RGB444);
+    video.color[0]  = SDL_MapRGB(format, 0x00, 0x00, 0x00); // Transparent
+    video.color[1]  = SDL_MapRGB(format, 0x00, 0x00, 0x00); // Black
+    video.color[2]  = SDL_MapRGB(format, 0x21, 0xc8, 0x42); // Green
+    video.color[3]  = SDL_MapRGB(format, 0x5e, 0xdc, 0x78); // Light green
+    video.color[4]  = SDL_MapRGB(format, 0x54, 0x55, 0xed); // Dark blue
+    video.color[5]  = SDL_MapRGB(format, 0x7d, 0x76, 0xfc); // Ligh blue
+    video.color[6]  = SDL_MapRGB(format, 0xd4, 0x52, 0x4d); // Dark red
+    video.color[7]  = SDL_MapRGB(format, 0x42, 0xeb, 0xf5); // Cyan
+    video.color[8]  = SDL_MapRGB(format, 0xfc, 0x55, 0x54); // Red
+    video.color[9]  = SDL_MapRGB(format, 0xff, 0x79, 0x78); // Light red
+    video.color[10] = SDL_MapRGB(format, 0xd4, 0xc1, 0x54); // Dark yellow
+    video.color[11] = SDL_MapRGB(format, 0xe6, 0xce, 0x80); // Light yellow
+    video.color[12] = SDL_MapRGB(format, 0x21, 0xb0, 0x3b); // Dark green
+    video.color[13] = SDL_MapRGB(format, 0xc9, 0x5b, 0xba); // Magenta
+    video.color[14] = SDL_MapRGB(format, 0xcc, 0xcc, 0xcc); // Gray
+    video.color[15] = SDL_MapRGB(format, 0xff, 0xff, 0xff); // White
+    SDL_FreeFormat(format);
+
+    memset(video.vdp_ram.color_table, 0x17, 32);
     refresh_video();
 
     return (BYTE *) &video.vdp_ram;
