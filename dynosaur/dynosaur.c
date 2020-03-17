@@ -32,7 +32,7 @@ BYTE ram_accessor(WORD address, bool read, BYTE value)
             value = ram[address];
         else
             ram[address] = value;
-    } else if (address >= 0x8000 && address < 0x83c0) {
+    } else if (address >= 0x8000 && address < (0x8000 + VDP_RAM_SIZE)) {
         if (read) {
             value = vdp_ram[address - 0x8000];
         } else {

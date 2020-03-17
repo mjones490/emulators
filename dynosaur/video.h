@@ -4,4 +4,6 @@
 BYTE *init_video();
 void finalize_video();
 void refresh_video();
+
+#define VDP_RAM_SIZE ((24*40)+(256*8))
 #endif

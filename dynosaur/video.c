@@ -11,16 +11,16 @@ struct {
     SDL_Renderer    *renderer;
     SDL_Texture     *texture;
     Uint16          *pixels;
-    BYTE            vdp_ram[24][40];
+    struct {
+        BYTE        screen[24][40];
+        BYTE        charset[256][8];
+    } vdp_ram;
     Uint32          timer;
     char            *title;
     int             width;
     int             height;
 } video;
 
-BYTE charset['Z' - ' '][8];
-
-const size_t charset_size = sizeof(charset) / 8;
 
 void draw_char(int row, int col, BYTE char_no)
 {
@@ -29,7 +29,7 @@ void draw_char(int row, int col, BYTE char_no)
     row *= 8;
     col *= 8;
     for (i = 0; i < 8; i++) {
-        pattern = charset[char_no][i];
+        pattern = video.vdp_ram.charset[char_no][i];
         for (j = 0; j < 8; j++) {
             video.pixels[((row + i) * 320) + (j + col)] = (pattern & 0x80) ? 65535 : 0;
             pattern <<= 1;
@@ -56,9 +56,8 @@ void refresh_video()
     int i, j, ch;
     for (i = 0; i < 24; i++)
         for (j = 0; j < 40; j++) {
-            ch = video.vdp_ram[i][j];
-            if (ch >= ' ' && ch <= 'Z')
-                draw_char(i, j, ch - ' ');
+            ch = video.vdp_ram.screen[i][j];
+            draw_char(i, j, ch);
         }
 
     SDL_UnlockTexture(video.texture);
@@ -72,7 +71,6 @@ static void load_char_set()
 {
     struct section_struct *section;
     struct key_struct *key;
-    struct key_struct *start;
     struct list_head *list;
     struct list_head *first;
     BYTE   char_code;
@@ -92,7 +90,7 @@ static void load_char_set()
             sscanf(key->value, "%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX", 
                 &hex[0], &hex[1], &hex[2], &hex[3],
                 &hex[4], &hex[5], &hex[6], &hex[7]);
-            memcpy(charset[char_code - ' '], hex, 8);
+            memcpy(video.vdp_ram.charset[char_code], hex, 8);
         }
     }
 }
@@ -160,7 +158,7 @@ BYTE *init_video()
 
     refresh_video();
 
-    return video.vdp_ram;
+    return (BYTE *) &video.vdp_ram;
 }
 
 void finalize_video()
