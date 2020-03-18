@@ -72,15 +72,18 @@ void refresh_video()
 
 }
 
-static void load_char_set()
+static void load_tables()
 {
     struct section_struct *section;
     struct key_struct *key;
     struct list_head *list;
     struct list_head *first;
-    BYTE   char_code;
+    BYTE   code;
     BYTE hex[8];
+    SDL_PixelFormat *format;
     
+    format = SDL_AllocFormat(SDL_PIXELFORMAT_RGB444);
+   
     section = get_config_section("VIDEO");
     if (section == NULL) {
         LOG_ERR("Could not find VIDEO configuration section");
@@ -90,14 +93,19 @@ static void load_char_set()
     key = section->key;
     LIST_FOR_EVERY(list, &section->key->list, first) {
         key = GET_ELEMENT(struct key_struct, list, list);
-        if (1 == sscanf(key->name, "C%02hhX", &char_code)) {
+        if (1 == sscanf(key->name, "C%02hhX", &code)) {
             LOG_DBG("%s=%s\n", key->name, key->value);
             sscanf(key->value, "%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX", 
                 &hex[0], &hex[1], &hex[2], &hex[3],
                 &hex[4], &hex[5], &hex[6], &hex[7]);
-            memcpy(video.vdp_ram.pattern_table[char_code], hex, 8);
+            memcpy(video.vdp_ram.pattern_table[code], hex, 8);
+        } else if (1 == sscanf(key->name, "COLOR%1hhX", &code)) {
+            LOG_DBG("%s=%s\n",  key->name, key->value);
+            sscanf(key->value, "%02hhX%02hhX%02hhX", &hex[0], &hex[1], &hex[2]);
+            video.color[code]  = SDL_MapRGB(format, hex[0], hex[1], hex[2]);
         }
     }
+    SDL_FreeFormat(format);
 }
 
 static void load_config()
@@ -121,12 +129,11 @@ static void load_config()
         video.title = "";
     }
     LOG_INF("Title = \"%s\".\n", video.title);
-    load_char_set();
+    load_tables();
 }
 
 BYTE *init_video()
 {
-    SDL_PixelFormat *format;
     LOG_INF("Initilizing video.\n");
     load_config();
     
@@ -161,25 +168,6 @@ BYTE *init_video()
         LOG_ERR("Error creating SDL texture: %s", SDL_GetError());
         return 0;
     }
-
-    format = SDL_AllocFormat(SDL_PIXELFORMAT_RGB444);
-    video.color[0]  = SDL_MapRGB(format, 0x00, 0x00, 0x00); // Transparent
-    video.color[1]  = SDL_MapRGB(format, 0x00, 0x00, 0x00); // Black
-    video.color[2]  = SDL_MapRGB(format, 0x21, 0xc8, 0x42); // Green
-    video.color[3]  = SDL_MapRGB(format, 0x5e, 0xdc, 0x78); // Light green
-    video.color[4]  = SDL_MapRGB(format, 0x54, 0x55, 0xed); // Dark blue
-    video.color[5]  = SDL_MapRGB(format, 0x7d, 0x76, 0xfc); // Ligh blue
-    video.color[6]  = SDL_MapRGB(format, 0xd4, 0x52, 0x4d); // Dark red
-    video.color[7]  = SDL_MapRGB(format, 0x42, 0xeb, 0xf5); // Cyan
-    video.color[8]  = SDL_MapRGB(format, 0xfc, 0x55, 0x54); // Red
-    video.color[9]  = SDL_MapRGB(format, 0xff, 0x79, 0x78); // Light red
-    video.color[10] = SDL_MapRGB(format, 0xd4, 0xc1, 0x54); // Dark yellow
-    video.color[11] = SDL_MapRGB(format, 0xe6, 0xce, 0x80); // Light yellow
-    video.color[12] = SDL_MapRGB(format, 0x21, 0xb0, 0x3b); // Dark green
-    video.color[13] = SDL_MapRGB(format, 0xc9, 0x5b, 0xba); // Magenta
-    video.color[14] = SDL_MapRGB(format, 0xcc, 0xcc, 0xcc); // Gray
-    video.color[15] = SDL_MapRGB(format, 0xff, 0xff, 0xff); // White
-    SDL_FreeFormat(format);
 
     memset(video.vdp_ram.color_table, 0x17, 32);
     refresh_video();
