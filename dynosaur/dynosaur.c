@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <unistd.h>
+#include <SDL2/SDL.h>
 #include "shell.h"
 #include "plugin.h"
 #include "shell_commands.h"
@@ -18,6 +19,7 @@ static struct {
     char *cpu_plugin;
     int ram_size;
     char *bin_dir;
+    Uint32 clock_speed;
 } config;
 
 struct cpu_interface *cpu;
@@ -76,21 +78,36 @@ void unload_plugin(void *handle)
 }
 
 WORD breakpoint = 0;
-static void execute_instruction()
+static BYTE execute_instruction()
 {
+    BYTE clocks;
     if (!cpu->get_halted()) {
-        cpu->execute_instruction();
+        clocks = cpu->execute_instruction();
         if (cpu->get_PC() == breakpoint) {
             printf("Breakpoint reached.\n");
             cpu->set_halted(true);
         }
     }
+
+    return clocks;
 }
 
 static void cycle()
 {
-//    usleep(10);
-    execute_instruction();
+    static int bucket = 0;
+    Uint32 current_timer= SDL_GetTicks();
+    static Uint32 timer;
+    if (timer == 0)
+        timer = current_timer;
+
+    if (bucket > 0)
+        bucket -= execute_instruction();
+    
+    if (current_timer > timer) {
+        bucket += (current_timer - timer) * config.clock_speed;
+        timer = current_timer;
+    }
+
     refresh_video();
 }
 
@@ -128,6 +145,13 @@ void load_config(char *config_name)
         LOG_WRN("RAM size not specified.  Assuming 0x8000.\n");
         config.ram_size = 0x8000;
     }
+
+    config.clock_speed = get_config_int(config.cpu_config, "CLOCK_SPEED");
+    if (config.clock_speed == 0) {
+        LOG_WRN("CPU Clock speed not configured.\n");
+        config.clock_speed = 500;
+    }
+    LOG_INF("CPU clock speed set to %dMhZ.\n", config.clock_speed);
 
     config.bin_dir = get_config_string(config.cpu_config, "DIRECTORY");
     if (config.bin_dir == NULL)
