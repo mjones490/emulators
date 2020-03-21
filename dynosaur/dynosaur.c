@@ -25,26 +25,40 @@ static struct {
 struct cpu_interface *cpu;
 
 BYTE *ram;
-BYTE *vdp_ram;
+
+/********************************************************/
+// Bus
+accessor_t bus[256];
 
 BYTE ram_accessor(WORD address, bool read, BYTE value)
 {
-    if (address < config.ram_size) {
-        if (read)
-            value = ram[address];
-        else
-            ram[address] = value;
-    } else if (address >= 0x8000 && address < (0x8000 + VDP_RAM_SIZE)) {
-        if (read) {
-            value = vdp_ram[address - 0x8000];
-        } else {
-            vdp_ram[address - 0x8000] = value;
-        }
-    }
+    LOG_DBG("RAM Access\n");
+    if (read)
+        value = ram[address];
+    else
+        ram[address] = value;
 
     return value;
 }
 
+BYTE bus_accessor(WORD address, bool read, BYTE value)
+{
+    if (bus[hi(address)])
+        return bus[hi(address)](address, read, value);
+    else
+        return 0;
+}
+
+void attach_bus(accessor_t accessor, BYTE start_page, BYTE num_pages)
+{
+    WORD i;
+    for (i = 0; i < num_pages; i++) {
+        if ((i + start_page) > 255)
+            break;
+        bus[i + start_page] = accessor;
+    }
+}
+/************************/
 void *load_plugin()
 {
     void *handle;
@@ -142,8 +156,8 @@ void load_config(char *config_name)
 
     config.ram_size = get_config_hex("DYNOSAUR", "RAM_SIZE");
     if (config.ram_size == 0) {
-        LOG_WRN("RAM size not specified.  Assuming 0x8000.\n");
-        config.ram_size = 0x8000;
+        LOG_WRN("RAM size not specified.  Assuming 0x80.\n");
+        config.ram_size = 0x80;
     }
 
     config.clock_speed = get_config_int(config.cpu_config, "CLOCK_SPEED");
@@ -165,11 +179,12 @@ static void init(char *config_name)
     init_logging();
     
     load_config(config_name);
-    shell_set_accessor(ram_accessor);
+    shell_set_accessor(bus_accessor);
 
     plugin = load_plugin();
-    ram = malloc(config.ram_size);
-    cpu->initialize(ram_accessor);
+    ram = malloc(config.ram_size * 256);
+    attach_bus(ram_accessor, 0, config.ram_size);
+    cpu->initialize(bus_accessor);
 
     if (config.bin_dir != NULL) {
         if(chdir(config.bin_dir) == -1)
@@ -178,7 +193,7 @@ static void init(char *config_name)
             LOG_INF("Changed to %s.\n", config.bin_dir);
     }
 
-    vdp_ram = init_video();
+    init_video();
 
     shell_initialize("dynosaur");
     shell_load_dynosaur_commands();

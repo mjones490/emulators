@@ -5,6 +5,7 @@
 #include "logging.h"
 #include "Stuff.h"
 #include "config.h"
+#include "dynosaur.h"
 
 struct {
     SDL_Window      *window;
@@ -72,6 +73,16 @@ void refresh_video()
 
 }
 
+BYTE vdp_ram_accessor(WORD address, bool read, BYTE value)
+{
+    if (read)
+        value = *((BYTE *) &video.vdp_ram + (address - 0x8000));
+    else
+        *((BYTE *) &video.vdp_ram + (address - 0x8000)) = value;
+
+    return value;
+}
+
 static void load_tables()
 {
     struct section_struct *section;
@@ -132,21 +143,21 @@ static void load_config()
     load_tables();
 }
 
-BYTE *init_video()
+void init_video()
 {
     LOG_INF("Initilizing video.\n");
     load_config();
     
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         LOG_ERR("Error initializing SDL: %s", SDL_GetError());
-        return 0;
+        return;
     }
 
     video.window = SDL_CreateWindow(video.title, SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, video.width, video.height, SDL_WINDOW_SHOWN);
     if (video.window == NULL) {
         LOG_ERR("Error creating SDL window: %s", SDL_GetError());
-        return 0;
+        return;
     }
 
     SDL_RaiseWindow(video.window);
@@ -154,7 +165,7 @@ BYTE *init_video()
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
     if (video.window == NULL) {
         LOG_ERR("Error creating SDL renderer: %s", SDL_GetError());
-        return 0;
+        return;
     }
 
     SDL_SetRenderDrawColor(video.renderer, 0, 0, 0, 0);
@@ -166,13 +177,12 @@ BYTE *init_video()
 
     if (video.texture == NULL) { 
         LOG_ERR("Error creating SDL texture: %s", SDL_GetError());
-        return 0;
+        return;
     }
 
     memset(video.vdp_ram.color_table, 0x17, 32);
+    attach_bus(vdp_ram_accessor, 0x80, 0x20);
     refresh_video();
-
-    return (BYTE *) &video.vdp_ram;
 }
 
 void finalize_video()
