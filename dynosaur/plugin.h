@@ -12,7 +12,7 @@ struct shell_commands_t {
 };
 #define SHELL_COMMANDS_CNT(SHELL_COMMANDS) ((sizeof(SHELL_COMMANDS) / sizeof(struct shell_commands_t)))
 struct cpu_interface {
-    void (*initialize)(accessor_t);
+    void (*initialize)(accessor_t, port_accessor_t);
     void (*finalize)();
     BYTE (*execute_instruction)();
     void (*show_registers)();

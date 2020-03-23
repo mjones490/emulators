@@ -5,12 +5,8 @@
 #include "8080_shell.h"
 #include "8080_cpu.h"
 
-BYTE ports(BYTE port, bool read, BYTE value)
-{
-    return 0;
-}
 
-void initialize(accessor_t accessor)
+void initialize(accessor_t accessor, port_accessor_t ports)
 {
     cpu_init(accessor, ports);
 }

@@ -28,16 +28,25 @@ static WORD disassemble(WORD address)
 
 struct cpu_interface interface;
 
-/*
-struct shell_commands_t shell_commands[] = {
-    { "registers", "View/Change 6502 registers.", registers, false },
-    { "disassemble", "Dissassemble 6502 instructions", disassemble, true }
-};
-*/
+accessor_t dynamic_accessor;
+port_accessor_t dynamic_port_accessor;
 
-void initialize(accessor_t accessor)
+static BYTE real_accessor(WORD address, bool read, BYTE value) 
 {
-    cpu_init(accessor);
+    if (hi(address) == 0xc0)
+        value = dynamic_port_accessor(lo(address), read, value);
+    else
+        value = dynamic_accessor(address, read, value);
+    
+    return value;
+}
+
+void initialize(accessor_t accessor, port_accessor_t port_accessor)
+{
+    dynamic_accessor = accessor;
+    dynamic_port_accessor = port_accessor;
+
+    cpu_init(real_accessor);
     set_halted(true);
 }
 

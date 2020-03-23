@@ -32,7 +32,6 @@ accessor_t bus[256];
 
 BYTE ram_accessor(WORD address, bool read, BYTE value)
 {
-    LOG_DBG("RAM Access\n");
     if (read)
         value = ram[address];
     else
@@ -45,8 +44,8 @@ BYTE bus_accessor(WORD address, bool read, BYTE value)
 {
     if (bus[hi(address)])
         return bus[hi(address)](address, read, value);
-    else
-        return 0;
+
+    return 0;
 }
 
 void attach_bus(accessor_t accessor, BYTE start_page, BYTE num_pages)
@@ -59,6 +58,25 @@ void attach_bus(accessor_t accessor, BYTE start_page, BYTE num_pages)
     }
 }
 /************************/
+// Ports
+port_accessor_t port[256];
+
+BYTE port_accessor(BYTE port_no, bool read, BYTE value)
+{
+    if (port[port_no])
+        return port[port_no](port_no, read, value);
+
+    LOG_DBG("Port %02x not attached.\n", port_no);
+    return 0;
+}
+
+void attach_port(port_accessor_t accessor, BYTE port_no)
+{
+    port[port_no] = accessor;
+}
+
+/************************/
+
 void *load_plugin()
 {
     void *handle;
@@ -141,6 +159,7 @@ void load_config(char *config_name)
     } else {
         sprintf(config.cpu_config, "%s_CPU", config_name);
     }
+    LOG_INF("CPU configuration name is %s.\n", config.cpu_config);
 
     config.cpu_name = get_config_string(config.cpu_config, "NAME");
     
@@ -184,7 +203,7 @@ static void init(char *config_name)
     plugin = load_plugin();
     ram = malloc(config.ram_size * 256);
     attach_bus(ram_accessor, 0, config.ram_size);
-    cpu->initialize(bus_accessor);
+    cpu->initialize(bus_accessor, port_accessor);
 
     if (config.bin_dir != NULL) {
         if(chdir(config.bin_dir) == -1)
