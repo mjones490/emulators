@@ -12,70 +12,14 @@
 #include "logging.h"
 #include "config.h"
 #include "video.h"
+#include "bus.h"
+#include "dynosaur.h"
 
-static struct {
-    char cpu_config[32];
-    char *cpu_name;
-    char *cpu_plugin;
-    int ram_size;
-    char *bin_dir;
-    Uint32 clock_speed;
-} config;
-
+struct config_t dyn_config;
 struct cpu_interface *cpu;
+WORD breakpoint = 0;
 
-BYTE *ram;
-
-/********************************************************/
-// Bus
-accessor_t bus[256];
-
-BYTE ram_accessor(WORD address, bool read, BYTE value)
-{
-    if (read)
-        value = ram[address];
-    else
-        ram[address] = value;
-
-    return value;
-}
-
-BYTE bus_accessor(WORD address, bool read, BYTE value)
-{
-    if (bus[hi(address)])
-        return bus[hi(address)](address, read, value);
-
-    return 0;
-}
-
-void attach_bus(accessor_t accessor, BYTE start_page, BYTE num_pages)
-{
-    WORD i;
-    for (i = 0; i < num_pages; i++) {
-        if ((i + start_page) > 255)
-            break;
-        bus[i + start_page] = accessor;
-    }
-}
-/************************/
-// Ports
-port_accessor_t port[256];
-
-BYTE port_accessor(BYTE port_no, bool read, BYTE value)
-{
-    if (port[port_no])
-        return port[port_no](port_no, read, value);
-
-    LOG_DBG("Port %02x not attached.\n", port_no);
-    return 0;
-}
-
-void attach_port(port_accessor_t accessor, BYTE port_no)
-{
-    port[port_no] = accessor;
-}
-
-/************************/
+static void *plugin;
 
 void *load_plugin()
 {
@@ -83,7 +27,7 @@ void *load_plugin()
     char *error;
     int i;
 
-    handle = dlopen(config.cpu_plugin, RTLD_LAZY);
+    handle = dlopen(dyn_config.cpu_plugin, RTLD_LAZY);
     if (handle == NULL) {
         fprintf(stderr, "dynosaur: %s\n", dlerror());
         exit(EXIT_FAILURE);
@@ -109,7 +53,6 @@ void unload_plugin(void *handle)
     dlclose(handle);
 }
 
-WORD breakpoint = 0;
 static BYTE execute_instruction()
 {
     BYTE clocks;
@@ -136,7 +79,7 @@ static void cycle()
         bucket -= execute_instruction();
     
     if (current_timer > timer) {
-        bucket += (current_timer - timer) * config.clock_speed;
+        bucket += (current_timer - timer) * dyn_config.clock_speed;
         timer = current_timer;
     }
 
@@ -153,63 +96,62 @@ void load_config(char *config_name)
 
     if (config_name == NULL) {
         temp = get_config_string("DYNOSAUR", "DEFAULT_CPU");
-        if (config.cpu_config == NULL)
+        if (temp == NULL)
             LOG_FTL("Cannot determine default configuration.\n");
-        strncpy(config.cpu_config, temp, 32);
+        strncpy(dyn_config.cpu_config, temp, 32);
     } else {
-        sprintf(config.cpu_config, "%s_CPU", config_name);
+        sprintf(dyn_config.cpu_config, "%s_CPU", config_name);
     }
-    LOG_INF("CPU configuration name is %s.\n", config.cpu_config);
+    LOG_INF("CPU configuration name is %s.\n", dyn_config.cpu_config);
 
-    config.cpu_name = get_config_string(config.cpu_config, "NAME");
+    dyn_config.cpu_name = get_config_string(dyn_config.cpu_config, "NAME");
     
-    if (config.cpu_name == NULL)
+    if (dyn_config.cpu_name == NULL)
         LOG_ERR("No CPU name.\n");
     else
-        LOG_INF("CPU Name is %s.\n", config.cpu_name);
+        LOG_INF("CPU Name is %s.\n", dyn_config.cpu_name);
 
-    config.cpu_plugin = get_config_string(config.cpu_config, "PLUGIN");
-    if (config.cpu_plugin == NULL)
+    dyn_config.cpu_plugin = get_config_string(dyn_config.cpu_config, "PLUGIN");
+    if (dyn_config.cpu_plugin == NULL)
         LOG_FTL("Cannot determine CPU plugin file name.\n");
-    LOG_INF("CPU plugin file name = %s.\n", config.cpu_plugin);
+    LOG_INF("CPU plugin file name = %s.\n", dyn_config.cpu_plugin);
 
-    config.ram_size = get_config_hex("DYNOSAUR", "RAM_SIZE");
-    if (config.ram_size == 0) {
+    dyn_config.ram_size = get_config_hex("DYNOSAUR", "RAM_SIZE");
+    if (dyn_config.ram_size == 0) {
         LOG_WRN("RAM size not specified.  Assuming 0x80.\n");
-        config.ram_size = 0x80;
+        dyn_config.ram_size = 0x80;
     }
 
-    config.clock_speed = get_config_int(config.cpu_config, "CLOCK_SPEED");
-    if (config.clock_speed == 0) {
+    dyn_config.clock_speed = get_config_int(dyn_config.cpu_config, "CLOCK_SPEED");
+    if (dyn_config.clock_speed == 0) {
         LOG_WRN("CPU Clock speed not configured.\n");
-        config.clock_speed = 500;
+        dyn_config.clock_speed = 500;
     }
-    LOG_INF("CPU clock speed set to %dMhZ.\n", config.clock_speed);
+    LOG_INF("CPU clock speed set to %dMhZ.\n", dyn_config.clock_speed);
 
-    config.bin_dir = get_config_string(config.cpu_config, "DIRECTORY");
-    if (config.bin_dir == NULL)
+    dyn_config.bin_dir = get_config_string(dyn_config.cpu_config, "DIRECTORY");
+    if (dyn_config.bin_dir == NULL)
         LOG_WRN("Binary directory not specified.  Will use current directory.\n");
 }
-
-void *plugin;
 
 static void init(char *config_name)
 {
     init_logging();
-    
+        
     load_config(config_name);
+    init_bus();
+
     shell_set_accessor(bus_accessor);
 
     plugin = load_plugin();
-    ram = malloc(config.ram_size * 256);
-    attach_bus(ram_accessor, 0, config.ram_size);
+    
     cpu->initialize(bus_accessor, port_accessor);
 
-    if (config.bin_dir != NULL) {
-        if(chdir(config.bin_dir) == -1)
-            LOG_ERR("Error changing to %s.\n", config.bin_dir);
+    if (dyn_config.bin_dir != NULL) {
+        if(chdir(dyn_config.bin_dir) == -1)
+            LOG_ERR("Error changing to %s.\n", dyn_config.bin_dir);
         else
-            LOG_INF("Changed to %s.\n", config.bin_dir);
+            LOG_INF("Changed to %s.\n", dyn_config.bin_dir);
     }
 
     init_video();
@@ -226,8 +168,8 @@ static void finalize()
     
     finalize_video();
 
-    free(ram);
     unload_plugin(plugin);
+    finalize_bus();
 }
 
 int main(int argv, char **argc)

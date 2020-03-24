@@ -1,18 +1,22 @@
 #ifndef __DYNOSAUR_H
 #define __DYNOSAUR_H
+#include <SDL2/SDL.h>
 #include "types.h"
 #include "plugin.h"
+#include "bus.h"
+
+struct config_t {
+    char cpu_config[32];
+    char *cpu_name;
+    char *cpu_plugin;
+    int ram_size;
+    char *bin_dir;
+    Uint32 clock_speed;
+};
 
 extern struct cpu_interface *cpu;
-extern BYTE *ram;
+extern struct config_t dyn_config;
 extern WORD breakpoint;
-
-typedef BYTE (*port_accessor_t)(BYTE port, bool read, BYTE value);
-
-void attach_bus(accessor_t accessor, BYTE start_page, BYTE num_pages);
-void attach_port(port_accessor_t accessor, BYTE port);
-
-BYTE bus_accessor(WORD address, bool read, BYTE value);
 
 static inline BYTE put_byte(WORD address, BYTE value)
 {
