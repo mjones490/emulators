@@ -13,6 +13,7 @@
 #include "config.h"
 #include "video.h"
 #include "bus.h"
+#include "keyboard.h"
 #include "dynosaur.h"
 
 struct config_t dyn_config;
@@ -83,6 +84,7 @@ static void cycle()
         timer = current_timer;
     }
 
+    check_keyboard();
     refresh_video();
 }
 
@@ -155,6 +157,7 @@ static void init(char *config_name)
     }
 
     init_video();
+    init_keyboard();
 
     shell_initialize("dynosaur");
     shell_load_dynosaur_commands();
@@ -166,6 +169,7 @@ static void finalize()
     cpu->finalize();
     shell_finalize();
     
+    finalize_keyboard();
     finalize_video();
 
     unload_plugin(plugin);

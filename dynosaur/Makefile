@@ -1,9 +1,13 @@
 all : dynosaur lib8080.so lib6502.so
 
+OBJECTS = dynosaur.o shell_commands.o video.o bus.o keyboard.o
+LIBS = utils Stuff shell SDL2 readline dl
+LIBS := $(LIBS:%=-l%)
+
 .SECONDARY :
-dynosaur : dynosaur.o shell_commands.o video.o bus.o
+dynosaur : $(OBJECTS)
 	$(MAKE) -C ../utilities
-	$(CC) -Wall dynosaur.o shell_commands.o video.o bus.o -L../lib -L../../Stuff -lutils -lStuff -lshell -lSDL2 -lreadline -ldl -o dynosaur
+	$(CC) -Wall $(OBJECTS) -L../lib -L../../Stuff $(LIBS) -o dynosaur
 
 dynosaur.o : dynosaur.c
 	$(CC) -Wall -g -I../include -c dynosaur.c -o dynosaur.o
@@ -16,6 +20,9 @@ video.o : video.c
 
 bus.o : bus.c
 	$(CC) -Wall -g -I../include -c bus.c -o bus.o
+
+keyboard.o : keyboard.c
+	$(CC) -Wall -g -I../include -c keyboard.c -o keyboard.o
 
 lib8080.so : 8080_plugin.o
 	$(MAKE) -C ../8080_cpu
