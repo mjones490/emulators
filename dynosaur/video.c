@@ -17,6 +17,7 @@ struct {
         BYTE        color_table[16]; // 83c0
         BYTE        free_space[48];  // 83d0
         BYTE        pattern_table[256][8]; // 8400
+        BYTE        padding[256];
     } vdp_ram;
     Uint16          color[16];
     Uint32          timer;
@@ -143,21 +144,23 @@ static void load_config()
     load_tables();
 }
 
-void init_video()
+void init_video(bool full_init)
 {
     LOG_INF("Initilizing video.\n");
     load_config();
     
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        LOG_ERR("Error initializing SDL: %s", SDL_GetError());
-        return;
-    }
+    if (full_init) {
+        if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+            LOG_ERR("Error initializing SDL: %s", SDL_GetError());
+            return;
+         }
 
-    video.window = SDL_CreateWindow(video.title, SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED, video.width, video.height, SDL_WINDOW_SHOWN);
-    if (video.window == NULL) {
-        LOG_ERR("Error creating SDL window: %s", SDL_GetError());
-        return;
+        video.window = SDL_CreateWindow(video.title, SDL_WINDOWPOS_UNDEFINED,
+            SDL_WINDOWPOS_UNDEFINED, video.width, video.height, SDL_WINDOW_SHOWN);
+        if (video.window == NULL) {
+            LOG_ERR("Error creating SDL window: %s", SDL_GetError());
+            return;
+        }
     }
 
     SDL_RaiseWindow(video.window);
@@ -181,14 +184,19 @@ void init_video()
     }
 
     memset(video.vdp_ram.color_table, 0x17, 32);
-    attach_bus(vdp_ram_accessor, 0x80, 0x20);
+    attach_bus(vdp_ram_accessor, 0x80, sizeof(video.vdp_ram) / 256);
     refresh_video();
 }
 
-void finalize_video()
+void finalize_video(bool full_finalize)
 {
     LOG_INF("Finalizing video.\n");
 
-    SDL_DestroyWindow(video.window);
-    SDL_Quit();
+    SDL_DestroyTexture(video.texture);
+    SDL_DestroyRenderer(video.renderer);
+
+    if (full_finalize) {
+        SDL_DestroyWindow(video.window);
+        SDL_Quit();
+    }
 }

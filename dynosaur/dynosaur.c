@@ -136,6 +136,7 @@ void load_config(char *config_name)
         LOG_WRN("Binary directory not specified.  Will use current directory.\n");
 }
 
+static int system_reset(int arc, char **argv);
 static void init(char *config_name)
 {
     init_logging();
@@ -156,11 +157,12 @@ static void init(char *config_name)
             LOG_INF("Changed to %s.\n", dyn_config.bin_dir);
     }
 
-    init_video();
+    init_video(true);
     init_keyboard();
 
     shell_initialize("dynosaur");
     shell_load_dynosaur_commands();
+    shell_add_command("reset", "Reset entire system.", system_reset, false);
     shell_set_loop_cb(cycle);
 }
 
@@ -170,16 +172,36 @@ static void finalize()
     shell_finalize();
     
     finalize_keyboard();
-    finalize_video();
+    finalize_video(true);
 
     unload_plugin(plugin);
     finalize_bus();
 }
 
+static int system_reset(int arc, char **argv)
+{
+    WORD address = 0;
+    LOG_INF("Total reset.\n");
+
+    do {
+        put_byte(address++, 0x00);
+    } while (address > 0);
+
+    finalize_keyboard();
+    finalize_video(false);
+    cpu->finalize();
+
+    cpu->initialize(bus_accessor, port_accessor);
+    init_video(false);
+    init_keyboard();
+
+    return 0;
+}
+
 int main(int argv, char **argc)
 {
     printf("Dynosaur\n");
-   
+
     init(argc[1]);
     shell_loop();
     finalize();
