@@ -61,6 +61,7 @@ static BYTE execute_instruction()
         clocks = cpu->execute_instruction();
         if (cpu->get_PC() == breakpoint) {
             printf("Breakpoint reached.\n");
+            cpu->show_registers();
             cpu->set_halted(true);
         }
     }
