@@ -37,6 +37,8 @@ struct cpu_state_t {
     BYTE total_clocks;
     bool halted;
     WORD breakpoint;
+    BYTE signals;
+    BYTE interrupt_vector;
 };
 
 extern union regs_t regs;
@@ -101,6 +103,26 @@ static inline WORD pop_word()
     regs.w.XY = get_word(regs.w.SP);
     regs.w.SP += 2;
     return regs.w.XY;
+}
+
+// Signal flags
+#define SIG_INT_ENABLED 0x01   // Interrupts enabled
+#define SIG_INTERRUPT   0x02   // Interrupt signaled
+#define SIG_INST_FETCH  0x04   // Instruction fetch
+
+static bool get_signal(BYTE signal_flag)
+{
+    return 0 != (cpu_state.signals & signal_flag);
+}
+
+static void set_signal(BYTE signal_flag)
+{
+    cpu_state.signals |= signal_flag;
+}
+
+static void clear_signal(BYTE signal_flag)
+{
+    cpu_state.signals &= ~signal_flag;
 }
 
 #endif // __CPU_TYPES_H

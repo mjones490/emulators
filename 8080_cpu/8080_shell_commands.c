@@ -287,6 +287,17 @@ static int breakpoint(int argc, char **argv)
     return 0;
 }
 
+static int interrupt(int argc, char **argv)
+{
+    int tmp;
+
+    if (argc == 2 && 1 == sscanf(argv[1], "%1x", &tmp)) {
+        cpu_state.interrupt_vector = tmp & 0x07;
+        set_signal(SIG_INTERRUPT);
+        printf("Interrupt set.\n");
+    }
+    return 0;
+}
 void cpu_shell_load_commands()
 {
     shell_add_command("registers", "View/change 8080 registers.", registers, false);
@@ -296,4 +307,5 @@ void cpu_shell_load_commands()
     shell_add_command("halt", "Halt CPU.", halt, false);
     shell_add_command("load", "Load a binary file the given address.", load, false);
     shell_add_command("breakpoint", "Set or view the PC breakpoint.", breakpoint, false);
+    shell_add_command("interrupt", "Signal an interrupt.", interrupt, false);
 }

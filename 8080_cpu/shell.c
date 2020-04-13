@@ -22,10 +22,15 @@ BYTE my_accessor(WORD address, bool read_byte, BYTE value)
 {
     if (address >= ram_size)
         return 0x00;
-    if (read_byte)
-        value = ram[address];
-    else
+    if (read_byte) {
+        if (get_signal(SIG_INT_ENABLED) && get_signal(SIG_INTERRUPT) && get_signal(SIG_INST_FETCH)) {
+            value = 0xc7 | (cpu_state.interrupt_vector << 3);
+        }
+        else
+            value = ram[address];
+    } else {
         ram[address] = value;
+    }
 
     return value;
 }

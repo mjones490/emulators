@@ -15,7 +15,17 @@ static BYTE exec_instruction(BYTE code)
 
 BYTE cpu_execute_instruction()
 {
-    return exec_instruction(get_next_byte());
+    WORD pc = cpu_get_reg_PC();
+    set_signal(SIG_INST_FETCH);
+    BYTE code = get_byte(pc);
+    clear_signal(SIG_INST_FETCH);
+   
+    if (!get_signal(SIG_INT_ENABLED) || !get_signal(SIG_INTERRUPT))
+        cpu_set_reg_PC(pc + 1);
+    else if (get_signal(SIG_INTERRUPT))
+        clear_signal(SIG_INTERRUPT);
+
+    return exec_instruction(code);    
 }
 
 void cpu_set_halted(bool halted)

@@ -416,6 +416,7 @@ INSTRUCTION(Rccc)
 
 INSTRUCTION(RST)
 {
+    clear_signal(SIG_INT_ENABLED);
     push_word(regs.w.PC);
     regs.w.PC = (cpu_state.code & 0x38);
 }
@@ -459,12 +460,12 @@ INSTRUCTION(OUT)
 
 INSTRUCTION(EI)
 {
-    // To Be Implemented
+    set_signal(SIG_INT_ENABLED);
 }
 
 INSTRUCTION(DI)
 {
-    // To Be Implemented
+    clear_signal(SIG_INT_ENABLED);
 }
 
 INSTRUCTION(HLT)

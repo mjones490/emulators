@@ -17,6 +17,9 @@ clean :
 	rm -vf shell *.o *.d *.a 
 	$(MAKE) -C ../shell clean
 
+rebuild : clean
+	$(MAKE)
+
 shell : shell.o ../lib/libshell.a lib8080.a
 	$(CC) $(LFLAGS) $^ -lshell -lreadline -o $@
 
