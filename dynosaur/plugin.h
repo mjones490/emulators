@@ -22,6 +22,7 @@ struct cpu_interface {
     bool (*get_halted)();
     void (*set_PC)(WORD);
     WORD (*get_PC)();
+    void (*interrupt)(BYTE);
     int num_shell_commands;
     struct shell_commands_t *shell_commands;
 };

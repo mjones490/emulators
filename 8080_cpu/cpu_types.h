@@ -125,4 +125,8 @@ static void clear_signal(BYTE signal_flag)
     cpu_state.signals &= ~signal_flag;
 }
 
+static BYTE reset_code(BYTE vector)
+{
+    return 0xc7 | (vector << 3);
+}
 #endif // __CPU_TYPES_H

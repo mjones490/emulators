@@ -24,7 +24,7 @@ BYTE my_accessor(WORD address, bool read_byte, BYTE value)
         return 0x00;
     if (read_byte) {
         if (get_signal(SIG_INT_ENABLED) && get_signal(SIG_INTERRUPT) && get_signal(SIG_INST_FETCH)) {
-            value = 0xc7 | (cpu_state.interrupt_vector << 3);
+            value = reset_code(cpu_state.interrupt_vector);
         }
         else
             value = ram[address];

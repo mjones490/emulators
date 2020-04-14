@@ -69,6 +69,31 @@ static BYTE execute_instruction()
     return clocks;
 }
 
+static int timer_interrupt_cnt = 0;
+static int timer_speed = 0;
+
+BYTE timer_port(BYTE port, bool read, BYTE value)
+{
+    if (!read) {
+        timer_speed = (int) value * 16;
+        timer_interrupt_cnt = 0;
+    }
+
+    return value;
+}
+
+void timer_interrupt(Uint32 timer)
+{
+    if (timer_speed == 0)
+        return;
+
+    timer_interrupt_cnt += (timer);
+    if (timer_interrupt_cnt >= timer_speed) {
+        timer_interrupt_cnt -= timer_speed;
+        cpu->interrupt(7);
+    }
+}
+
 static void cycle()
 {
     static int bucket = 0;
@@ -82,6 +107,8 @@ static void cycle()
     
     if (current_timer > timer) {
         bucket += (current_timer - timer) * dyn_config.clock_speed;
+        if (!cpu->get_halted()) 
+            timer_interrupt(current_timer - timer);
         timer = current_timer;
     }
 
@@ -165,6 +192,8 @@ static void init(char *config_name)
     shell_load_dynosaur_commands();
     shell_add_command("reset", "Reset entire system.", system_reset, false);
     shell_set_loop_cb(cycle);
+
+    attach_port(timer_port, 0x08);
 }
 
 static void finalize()
