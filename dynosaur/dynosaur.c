@@ -14,6 +14,7 @@
 #include "video.h"
 #include "bus.h"
 #include "keyboard.h"
+#include "sound.h"
 #include "dynosaur.h"
 
 struct config_t dyn_config;
@@ -187,6 +188,7 @@ static void init(char *config_name)
 
     init_video(true);
     init_keyboard();
+    init_sound();
 
     shell_initialize("dynosaur");
     shell_load_dynosaur_commands();
@@ -224,6 +226,7 @@ static int system_reset(int arc, char **argv)
     cpu->initialize(bus_accessor, port_accessor);
     init_video(false);
     init_keyboard();
+    init_sound();
 
     return 0;
 }

@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include "types.h"
 #include "dynosaur.h"
+#include "bus.h"
 
 static void load_image(char* file_name, WORD address)
 {
@@ -159,6 +160,31 @@ static int registers(int argc, char **argv)
     return 0;
 }
 
+static int out_port(int argc, char **argv)
+{
+    int tmp;
+    BYTE port;
+    BYTE value;
+    int parms = 0;
+
+    if (argc == 3) {
+        if (1 == sscanf(argv[1], "%2x", &tmp)) {
+            parms++;
+            port = tmp;
+        }
+        
+        if (1 == sscanf(argv[2], "%2x", &tmp)) {
+            parms++;
+            value = tmp;
+        }
+
+        if (parms == 2)
+            port_accessor(port, false, value);
+    }
+
+    return 0;
+}
+
 void shell_load_dynosaur_commands()
 {
     shell_add_command("step", "Execute single instruction.", step, true);
@@ -168,5 +194,6 @@ void shell_load_dynosaur_commands()
     shell_add_command("disassemble", "Disassemble instructions", disassemble, true);
     shell_add_command("breakpoint", "View/Set breakpoint", set_breakpoint, false);
     shell_add_command("load", "Load a binary image file into RAM", load, false);
+    shell_add_command("out", "Write value to port", out_port, false);
 }
     

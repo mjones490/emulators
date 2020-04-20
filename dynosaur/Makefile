@@ -1,7 +1,7 @@
 all : dynosaur lib8080.so lib6502.so
 
-OBJECTS = dynosaur.o shell_commands.o video.o bus.o keyboard.o
-LIBS = utils Stuff shell SDL2 readline dl
+OBJECTS = dynosaur.o shell_commands.o video.o bus.o keyboard.o sound.o
+LIBS = utils Stuff shell SDL2 SDL2_mixer readline dl
 LIBS := $(LIBS:%=-l%)
 
 .SECONDARY :
@@ -23,6 +23,9 @@ bus.o : bus.c
 
 keyboard.o : keyboard.c
 	$(CC) -Wall -g -I../include -c keyboard.c -o keyboard.o
+
+sound.o : sound.c
+	$(CC) -Wall -g -I../include -c sound.c -o sound.o
 
 lib8080.so : 8080_plugin.o
 	$(MAKE) -C ../8080_cpu
