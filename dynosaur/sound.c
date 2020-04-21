@@ -27,9 +27,9 @@ void sound_hook(void *udata, Uint8 *stream, int len)
         stream[i] = 0;
         for (ch = 0; ch < 3; ch++) {
             if (!(channel[ch].cnt--)) {
-                channel[ch].cnt = channel[ch].freq / freq_div;
-                vol = (0x0f - channel[ch].vol);
-                channel[ch].amp = (channel[ch].amp == vol)? -vol : vol;
+                channel[ch].cnt = (channel[ch].freq / freq_div) / 2;
+                vol = (0x0f - channel[ch].vol) << 2;
+                channel[ch].amp = (channel[ch].amp > 0)? -vol : vol;
             }
             stream[i] += channel[ch].amp;
         }
