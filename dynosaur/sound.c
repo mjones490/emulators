@@ -4,6 +4,7 @@
 #include <SDL2/SDL_mixer.h>
 #include "logging.h"
 #include "dynosaur.h"
+#include "config.h"
 
 struct channel_t {
     int amp;
@@ -25,8 +26,9 @@ int noise_cnts[] = { 218, 109, 54 };
 
 struct channel_t channel[3];
 
-const double sample_freq = 22050;
-double freq_div;
+static double sample_freq = 0;
+static BYTE port_no = 0;
+static double freq_div;
 
 static inline int parity(int val) 
 {
@@ -53,7 +55,7 @@ void sound_hook(void *udata, Uint8 *stream, int len)
         for (ch = 0; ch < 3; ch++) {
             if (!(channel[ch].cnt--)) {
                 channel[ch].cnt = frequency(channel[ch].freq) / 2;
-                vol = (0x0f - channel[ch].vol) << 2;
+                vol = (0x0f - channel[ch].vol);
                 channel[ch].amp = (channel[ch].amp > 0)? -vol : vol;
             }
             stream[i] += channel[ch].amp;
@@ -64,7 +66,7 @@ void sound_hook(void *udata, Uint8 *stream, int len)
             noise.shiftReg = (noise.shiftReg >> 1) | 
                 ((noise.type? parity(noise.shiftReg & 0x0009) : noise.shiftReg & 0x0001) << 15);
             if (noise.shiftReg & 0x0001) {
-                vol = (0x0f - noise.vol) << 2;
+                vol = (0x0f - noise.vol);
                 noise.amp = (noise.amp > 0)? -vol : vol;
             }
         }
@@ -85,7 +87,6 @@ BYTE sound_port(BYTE port, bool read, BYTE value)
     WORD freq;
 
     if (!read) {
-        SDL_LockAudio();
         if (value & 0x80) {
             prev_channel = (value >> 5) & 0x03;
             high_byte = false;
@@ -111,8 +112,8 @@ BYTE sound_port(BYTE port, bool read, BYTE value)
                 }
             }
         
-             //LOG_INF("Channel = %d  Freq = %04x (%f Hz), cnt = %f, vol = %02x\n", 
-              //  ch, freq, (sample_freq * freq_div) / (double) freq, freq / freq_div, vol);
+             LOG_DBG("Channel = %d  Freq = %04x (%f Hz), cnt = %f, vol = %02x\n", 
+                ch, freq, (sample_freq * freq_div) / (double) freq, freq / freq_div, vol);
             channel[ch].freq = freq;
             channel[ch].vol = vol;
         } else {
@@ -124,17 +125,43 @@ BYTE sound_port(BYTE port, bool read, BYTE value)
                 noise.freq = value & 0x03;
                 noise.shiftReg = 0x8000;
             }
-            //LOG_INF("Noise type = %s, freq = %d, vol = %02x\n", noise.type? "White" : "Periodic", noise.freq, noise.vol);  
+            LOG_DBG("Noise type = %s, freq = %d, vol = %02x\n", noise.type? "White" : "Periodic", noise.freq, noise.vol);  
         }
-        SDL_UnlockAudio();
     }
 
     return value;
 }
 
+static void load_config()
+{
+    sample_freq = get_config_int("SOUND", "FREQUENCY");
+    if (sample_freq == 0) {
+        LOG_WRN("Frequency not specified.  Assuming 22050.\n");
+        sample_freq = 22050;
+    } else {
+        LOG_INF("Frequency = %d\n", (int) sample_freq);
+    }
+
+    port_no = get_config_hex("SOUND", "PORT");
+    if (port_no == 0) {
+        LOG_WRN("Port not specified. Assuming 18h.\n");
+        port_no = 0x18;
+    } else {
+        LOG_INF("Port = %02x.\n", port_no);
+    }
+}
+
 void init_sound()
 {
+    int i;
     LOG_INF("Initializing sound.\n");
+
+    load_config();
+
+    for (i = 0; i < 3; i++)
+        channel[i].vol = 0x0f;
+
+    noise.vol = 0x0f;
 
     freq_div = 111860 / sample_freq;
 
@@ -146,7 +173,14 @@ void init_sound()
 
     LOG_INF("Sound initialized.\n");
 
-    attach_port(sound_port, 0x18);
+    attach_port(sound_port, port_no);
 
     Mix_HookMusic(sound_hook, NULL);
+}
+
+void finalize_sound()
+{
+    LOG_INF("Finalizing sound.\n");
+    Mix_HookMusic(NULL, NULL);
+    Mix_CloseAudio();
 }

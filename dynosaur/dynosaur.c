@@ -203,6 +203,7 @@ static void finalize()
     cpu->finalize();
     shell_finalize();
     
+    finalize_sound();
     finalize_keyboard();
     finalize_video(true);
 
@@ -219,6 +220,7 @@ static int system_reset(int arc, char **argv)
         put_byte(address++, 0x00);
     } while (address > 0);
 
+    finalize_sound();
     finalize_keyboard();
     finalize_video(false);
     cpu->finalize();
