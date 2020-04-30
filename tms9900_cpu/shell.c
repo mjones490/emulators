@@ -104,6 +104,8 @@ void init_instruction()
     struct instruction_list_t *branch;
     struct instruction_list_t *new_branch;
 
+    size_t total_size = list_size;
+
     for (i = 0; i < instruction_count; i++) {
         group = 0;
         branch = root;
@@ -121,11 +123,14 @@ void init_instruction()
                     memset(new_branch, 0, list_size);
                     new_branch->type = ET_LIST;
                     branch->list[inst_ndx] = new_branch;
+                    total_size += list_size;
                 }
                 branch = branch->list[inst_ndx];
             }
         }
     }
+
+    printf("Total instruction list size = %zu bytes.\n", total_size);
 }
 
 struct instruction_t *decode_instruction(WORD code)
@@ -165,9 +170,21 @@ int disassemble(int argc, char **argv)
     return 0;
 }
 
+char *reg_name[] = {
+    "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
+    "r8", "r9", "ra", "rb", "rc", "rd", "re", "rf"
+};
+
 void show_registers()
 {
+    int i;
     printf("pc: %04x wp: %04x st: %04x\n", regs.pc, regs.wp, regs.st);
+
+    for (i = 0; i < 16; i++) {
+        printf("%s = %04x  ", reg_name[i], get_register(i));
+        if (i == 7 || i == 15)
+            printf("\n");
+    }
 }
 
 int registers(int argc, char **argv)
@@ -195,6 +212,8 @@ int registers(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+    cpu_state.bus = my_accessor;
+
     init_instruction();
     ram = malloc(ram_size);
     shell_set_accessor(my_accessor);
