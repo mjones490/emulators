@@ -1,4 +1,4 @@
-PROJECTS = shell 6502_cpu 8080_cpu markII dynosaur utilities
+PROJECTS = shell 6502_cpu 8080_cpu tms9900_cpu markII dynosaur utilities
 CLEAN_PROJECTS = $(addsuffix clean, $(PROJECTS))
 BUILD_PROJECTS = $(addsuffix build, $(PROJECTS))
 
