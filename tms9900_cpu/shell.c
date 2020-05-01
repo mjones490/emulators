@@ -50,12 +50,134 @@ enum entry_type {
     ET_INSTRUCTION,
     ET_LIST
 };
-struct instruction_t {
-    enum entry_type type;    
-    char            *mnemonic;
-    char            group;
-    WORD            code;
+
+struct operands_t {
+    WORD    src;
+    WORD    dest;
+    WORD    disp;
+    BYTE    cnt;
 };
+
+struct instruction_t {
+    enum entry_type     type;    
+    char                *mnemonic;
+    char                group;
+    WORD                code;
+    char                format;
+};
+
+static inline WORD get_address(BYTE t, BYTE r, bool byte)
+{
+    WORD address;
+    if (t == 0) {
+        address = get_register_address(r);
+    } else if (t == 1 || t == 2) {
+        address = get_register_value(r);
+        if (t == 2) 
+            set_register_value(r, address + (byte? 1 : 2));
+    } else {
+        address = regs.pc;
+        regs.pc += 2;
+        if (r > 0)
+            address += get_register_value(r);
+    }
+
+    return address;
+}
+
+struct operands_t format_I(WORD code)
+{
+    struct operands_t ops;
+    memset(&ops, 0, sizeof(ops));
+
+    bool byte = (code >> 12) & 0x01;
+    BYTE td = (code >> 10) & 0x03;
+    BYTE rd = (code >> 6) & 0x0f;
+    BYTE ts = (code >> 4) & 0x03;
+    BYTE rs = code & 0x0f;
+
+    ops.dest = get_address(td, rd, byte);
+    ops.src = get_address(ts, rs, byte);
+
+    return ops;
+}
+
+struct operands_t format_II(WORD code)
+{
+    struct operands_t ops;
+    memset(&ops, 0, sizeof(ops));
+
+    ops.disp = (code & 0xff) << 1;
+
+    return ops;
+}
+
+struct operands_t format_III(WORD code)
+{
+    struct operands_t ops;
+    memset(&ops, 0, sizeof(ops));
+
+    BYTE rd = (code >> 6) & 0x0f;
+    BYTE ts = (code >> 4) & 0x03;
+    BYTE rs = code & 0x0f;
+
+    ops.dest = get_register_address(rd);
+    ops.src = get_address(ts, rs, false);
+
+    return ops;
+}
+
+struct operands_t format_IV(WORD code)
+{
+    struct operands_t ops;
+    memset(&ops, 0, sizeof(ops));
+
+    BYTE ts = (code >> 4) & 0x03;
+    BYTE rs = code & 0x0f;
+
+    ops.cnt = (code >> 6) & 0x0f;
+    ops.src = get_address(ts, rs, false);
+
+    return ops;
+}
+
+struct operands_t format_V(WORD code)
+{
+    struct operands_t ops;
+    memset(&ops, 0, sizeof(ops));
+
+    BYTE rs = code & 0x0f;
+
+    ops.cnt = (code >> 4) & 0x0f;
+    ops.src = get_register_address(rs);
+
+    return ops;
+}
+
+struct operands_t format_VI(WORD code)
+{
+    struct operands_t ops;
+    memset(&ops, 0, sizeof(ops));
+
+    BYTE ts = (code >> 4) & 0x03;
+    BYTE rs = code & 0x0f;
+
+    ops.src = get_address(ts, rs, false);
+
+    return ops;
+}
+
+struct operands_t format_VIII(WORD code)
+{
+    struct operands_t ops;
+    memset(&ops, 0, sizeof(ops));
+
+    BYTE rd = code & 0x0f;
+
+    ops.dest = get_register_address(rd);
+
+    return ops;
+}
 
 #define GRP_0 0
 #define GRP_1 1
@@ -63,17 +185,29 @@ struct instruction_t {
 #define GRP_3 3
 #define GRP_4 4
 
-#define INSTRUCTION_DEF(mnemonic, code, group) \
-    { ET_INSTRUCTION, #mnemonic, group, code }
+#define FMT_I       0
+#define FMT_II      1
+#define FMT_III     2
+#define FMT_IV      3
+#define FMT_V       4
+#define FMT_VI      5
+#define FMT_VII     6
+#define FMT_VIII    7
+
+#define INSTRUCTION_DEF(mnemonic, code, group, format) \
+    { ET_INSTRUCTION, #mnemonic, group, code, format }
 
 struct instruction_t instruction[] = {
-    INSTRUCTION_DEF( A,     0xa000, GRP_0),
-    INSTRUCTION_DEF( AB,    0xb000, GRP_0), 
-    INSTRUCTION_DEF( BR,    0x4400, GRP_3),
-    INSTRUCTION_DEF( JMP,   0x1000, GRP_2),
-    INSTRUCTION_DEF( LI,    0x0200, GRP_4),
-    INSTRUCTION_DEF( SBO,   0x1d00, GRP_2),
-    INSTRUCTION_DEF( XOR,   0x2400, GRP_1)
+    INSTRUCTION_DEF( A,     0xa000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF( AB,    0xb000, GRP_0, FMT_I    ), 
+    INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( JMP,   0x1000, GRP_2, FMT_II   ),
+    INSTRUCTION_DEF( LDCR,  0x3000, GRP_1, FMT_IV   ),
+    INSTRUCTION_DEF( LI,    0x0200, GRP_4, FMT_VIII ),
+    INSTRUCTION_DEF( RTWP,  0x0380, GRP_4, FMT_VII  ),
+    INSTRUCTION_DEF( SBO,   0x1d00, GRP_2, FMT_II   ),
+    INSTRUCTION_DEF( SLA,   0x0a00, GRP_2, FMT_V    ),
+    INSTRUCTION_DEF( XOR,   0x2400, GRP_1, FMT_III  )
 };
 
 struct instruction_list_t {
@@ -156,6 +290,8 @@ int disassemble(int argc, char **argv)
     unsigned int tmp;
     struct instruction_t *instruction;
     WORD op;
+    struct operands_t operands;
+
     if (argc != 2) {
         printf("disassemble word, where word is word to disassemble.\n");
         return 0;
@@ -164,13 +300,50 @@ int disassemble(int argc, char **argv)
     sscanf(argv[1], "%04x", &tmp);
     op = tmp;
     instruction = decode_instruction(op);
-    if (instruction != 0)
+    if (instruction != 0) {
         printf("Intruction = %s\n", instruction->mnemonic);
+            switch (instruction->format) {
+            case FMT_I:
+                operands = format_I(op);
+                printf("dest = %04x  src = %04x\n", operands.dest, operands.src);
+                break;
+            
+            case FMT_II:
+                operands = format_II(op);
+                printf("disp = %04x\n", operands.disp);
+                break;
+
+            case FMT_III:
+                operands = format_III(op);
+                printf("dest = %04x  src = %04x\n", operands.dest, operands.src);
+                break;
+
+            case FMT_IV:
+                operands = format_IV(op);
+                printf("cnt = %1x  src = %04x\n", operands.cnt, operands.src);
+                break;
+
+            case FMT_V:
+                operands = format_V(op);
+                printf("cnt = %1x  src = %04x\n", operands.cnt, operands.src);
+                break;
+
+            case FMT_VI:
+                operands = format_VI(op);
+                printf("src = %04x\n", operands.src);
+                break;
+
+            case FMT_VIII:
+                operands = format_VIII(op);
+                printf("dest = %04x\n", operands.dest);
+                break;
+            }
+    }
 
     return 0;
 }
 
-char *reg_name[] = {
+char *ws_reg_name[] = {
     "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
     "r8", "r9", "ra", "rb", "rc", "rd", "re", "rf"
 };
@@ -181,7 +354,7 @@ void show_registers()
     printf("pc: %04x wp: %04x st: %04x\n", regs.pc, regs.wp, regs.st);
 
     for (i = 0; i < 16; i++) {
-        printf("%s = %04x  ", reg_name[i], get_register(i));
+        printf("%s = %04x  ", ws_reg_name[i], get_register_value(i));
         if (i == 7 || i == 15)
             printf("\n");
     }
@@ -192,6 +365,7 @@ int registers(int argc, char **argv)
     int tmp;
     char *reg_name;
     int arg_no = 1;
+    int i;
 
     while (argc > arg_no) {
         reg_name = argv[arg_no++];
@@ -202,6 +376,13 @@ int registers(int argc, char **argv)
                 regs.wp = (WORD) tmp;
             else if (0 == strcmp("st", reg_name))
                 regs.st = (WORD) tmp;
+            else {
+                for (i = 0; i < 16; i++) {
+                    if (0 == strcmp(ws_reg_name[i], reg_name)) {
+                        set_register_value(i, (WORD) tmp);
+                    }
+                }
+            }
         }
     }
 

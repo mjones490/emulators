@@ -36,14 +36,26 @@ static inline WORD put_word(WORD address, WORD value)
     return value;
 }
 
-static inline WORD get_register(int reg_no)
+static inline WORD get_next_word()
 {
-    return get_word(regs.wp + (reg_no << 1));
+    WORD value = get_word(regs.pc);
+    regs.pc += 2;
+    return value;
 }
 
-static inline WORD set_register(int reg_no, WORD value)
+static inline WORD get_register_address(int reg_no)
 {
-    return put_word(regs.wp + (reg_no << 1), value);
+    return regs.wp + (reg_no << 1);
+}
+
+static inline WORD get_register_value(int reg_no)
+{
+    return get_word(get_register_address(reg_no));
+}
+
+static inline WORD set_register_value(int reg_no, WORD value)
+{
+    return put_word(get_register_address(reg_no), value);
 }
 
 #endif
