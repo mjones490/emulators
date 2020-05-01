@@ -64,6 +64,7 @@ struct instruction_t {
     char                group;
     WORD                code;
     char                format;
+    void                (*handler)(struct operands_t *ops);
 };
 
 static inline WORD get_address(BYTE t, BYTE r, bool byte)
@@ -76,8 +77,7 @@ static inline WORD get_address(BYTE t, BYTE r, bool byte)
         if (t == 2) 
             set_register_value(r, address + (byte? 1 : 2));
     } else {
-        address = regs.pc;
-        regs.pc += 2;
+        address = get_next_word();
         if (r > 0)
             address += get_register_value(r);
     }
@@ -194,20 +194,43 @@ struct operands_t format_VIII(WORD code)
 #define FMT_VII     6
 #define FMT_VIII    7
 
+#define INSTRUCTION(mnemonic) \
+    void __ ## mnemonic(struct operands_t *ops)
+
+INSTRUCTION(LI)
+{
+    put_word(ops->dest, get_next_word());
+}
+
+INSTRUCTION(LWPI)
+{
+    regs.wp = get_next_word();
+}
+
+INSTRUCTION(MOV)
+{
+    put_word(ops->dest, get_word(ops->src));
+}
+
 #define INSTRUCTION_DEF(mnemonic, code, group, format) \
-    { ET_INSTRUCTION, #mnemonic, group, code, format }
+    { ET_INSTRUCTION, #mnemonic, group, code, format, __ ## mnemonic }
+
+#define INSTRUCTION_DEF_NULL(mnemonic, code, group, format) \
+    { ET_INSTRUCTION, #mnemonic, group, code, format, NULL }
 
 struct instruction_t instruction[] = {
-    INSTRUCTION_DEF( A,     0xa000, GRP_0, FMT_I    ),
-    INSTRUCTION_DEF( AB,    0xb000, GRP_0, FMT_I    ), 
-    INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( JMP,   0x1000, GRP_2, FMT_II   ),
-    INSTRUCTION_DEF( LDCR,  0x3000, GRP_1, FMT_IV   ),
+    INSTRUCTION_DEF_NULL( A,     0xa000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF_NULL( AB,    0xb000, GRP_0, FMT_I    ), 
+    INSTRUCTION_DEF_NULL( B,     0x0440, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF_NULL( JMP,   0x1000, GRP_2, FMT_II   ),
+    INSTRUCTION_DEF_NULL( LDCR,  0x3000, GRP_1, FMT_IV   ),
     INSTRUCTION_DEF( LI,    0x0200, GRP_4, FMT_VIII ),
-    INSTRUCTION_DEF( RTWP,  0x0380, GRP_4, FMT_VII  ),
-    INSTRUCTION_DEF( SBO,   0x1d00, GRP_2, FMT_II   ),
-    INSTRUCTION_DEF( SLA,   0x0a00, GRP_2, FMT_V    ),
-    INSTRUCTION_DEF( XOR,   0x2400, GRP_1, FMT_III  )
+    INSTRUCTION_DEF( LWPI,  0x02e0, GRP_4, FMT_VIII ),
+    INSTRUCTION_DEF( MOV,   0xc000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF_NULL( RTWP,  0x0380, GRP_4, FMT_VII  ),
+    INSTRUCTION_DEF_NULL( SBO,   0x1d00, GRP_2, FMT_II   ),
+    INSTRUCTION_DEF_NULL( SLA,   0x0a00, GRP_2, FMT_V    ),
+    INSTRUCTION_DEF_NULL( XOR,   0x2400, GRP_1, FMT_III  )
 };
 
 struct instruction_list_t {
@@ -283,6 +306,47 @@ struct instruction_t *decode_instruction(WORD code)
         branch = branch->list[inst_ndx];
         group++;
     }
+}
+
+void execute_instruction()
+{
+    WORD op = get_next_word();
+    struct instruction_t *instruction = decode_instruction(op);
+    struct operands_t operands;
+
+    if (instruction != 0 && instruction->handler != NULL) {
+        switch (instruction->format) {
+        case FMT_I:
+            operands = format_I(op);
+            break;
+            
+        case FMT_II:
+            operands = format_II(op);
+            break;
+
+        case FMT_III:
+            operands = format_III(op);
+            break;
+
+        case FMT_IV:
+            operands = format_IV(op);
+            break;
+
+        case FMT_V:
+            operands = format_V(op);
+            break;
+
+        case FMT_VI:
+            operands = format_VI(op);
+            break;
+
+        case FMT_VIII:
+            operands = format_VIII(op);
+            break;
+        }
+
+        instruction->handler(&operands);
+    }    
 }
 
 int disassemble(int argc, char **argv)
@@ -391,6 +455,20 @@ int registers(int argc, char **argv)
     return 0;
 }
 
+int step(int argc, char **argv)
+{
+    unsigned int tmp;
+    
+    if (argc > 1) {
+        if (1 == sscanf(argv[1], "%4x", &tmp))
+            regs.pc = (WORD) tmp;
+    }
+
+    execute_instruction();
+    show_registers();
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     cpu_state.bus = my_accessor;
@@ -402,7 +480,8 @@ int main(int argc, char **argv)
     
     shell_add_command("disassemble", "Disassemble a word.", disassemble, false);
     shell_add_command("registers", "View/change regisgers.", registers, false);
-    
+    shell_add_command("step", "Execute single instruction.", step, true);
+
     shell_loop();
     shell_finalize();
     printf("\n");
