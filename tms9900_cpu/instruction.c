@@ -52,6 +52,11 @@ INSTRUCTION(BLWP)
     regs.pc = get_word(ops->src + 2);
 }
 
+INSTRUCTION(CLR)
+{
+    put_word(ops->src, 0x0000);
+}
+
 INSTRUCTION(DEC)
 {
     put_word(ops->src, get_word(ops->src) - 1);
@@ -70,6 +75,11 @@ INSTRUCTION(INC)
 INSTRUCTION(INCT)
 {
     put_word(ops->src, get_word(ops->src) + 2);
+}
+
+INSTRUCTION(INV)
+{
+    put_word(ops->src, get_word(ops->src) ^ 0xffff);
 }
 
 INSTRUCTION(JMP)
@@ -104,6 +114,11 @@ INSTRUCTION(RTWP)
     regs.wp = get_register_value(13);
 }
 
+INSTRUCTION(SETO)
+{
+    put_word(ops->src, 0xffff);
+}
+
 INSTRUCTION(XOR)
 {
     WORD value = get_word(ops->dest);
@@ -122,10 +137,12 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( BL,    0x0680, GRP_3, FMT_VI   ), 
     INSTRUCTION_DEF( BLWP,  0x0400, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( CLR,   0x04c0, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( DEC,   0x0600, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( DECT,  0x0640, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( INC,   0x0580, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( INCT,  0x05c0, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( INV,   0x0540, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( JMP,   0x1000, GRP_2, FMT_II   ),
     INSTRUCTION_DEF_NULL( LDCR,  0x3000, GRP_1, FMT_IV   ),
     INSTRUCTION_DEF( LI,    0x0200, GRP_4, FMT_VIII ),
@@ -134,6 +151,7 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( MOVB,  0xd000, GRP_0, FMT_I    ),
     INSTRUCTION_DEF( RTWP,  0x0380, GRP_4, FMT_VII  ),
     INSTRUCTION_DEF_NULL( SBO,   0x1d00, GRP_2, FMT_X   ),
+    INSTRUCTION_DEF( SETO,  0x0700, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF_NULL( SLA,   0x0a00, GRP_2, FMT_V    ),
     INSTRUCTION_DEF( XOR,   0x2400, GRP_1, FMT_III  )
 };
