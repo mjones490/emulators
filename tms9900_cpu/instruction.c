@@ -34,6 +34,12 @@ INSTRUCTION(B)
     regs.pc = ops->src;
 }
 
+INSTRUCTION(BL)
+{
+   set_register_value(11, regs.pc);
+   regs.pc = ops->src;
+}
+
 INSTRUCTION(JMP)
 {
     regs.pc += (ops->disp * 2);
@@ -75,6 +81,7 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF_NULL( A,     0xa000, GRP_0, FMT_I    ),
     INSTRUCTION_DEF_NULL( AB,    0xb000, GRP_0, FMT_I    ), 
     INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( BL,    0x0680, GRP_3, FMT_VI   ), 
     INSTRUCTION_DEF( JMP,   0x1000, GRP_2, FMT_II   ),
     INSTRUCTION_DEF_NULL( LDCR,  0x3000, GRP_1, FMT_IV   ),
     INSTRUCTION_DEF( LI,    0x0200, GRP_4, FMT_VIII ),
