@@ -70,11 +70,12 @@ struct instruction_t {
 static inline WORD get_address(BYTE t, BYTE r, bool byte)
 {
     WORD address;
+
     if (t == 0) {
         address = get_register_address(r);
-    } else if (t == 1 || t == 2) {
+    } else if (t == 1 || t == 3) {
         address = get_register_value(r);
-        if (t == 2) 
+        if (t == 3) 
             set_register_value(r, address + (byte? 1 : 2));
     } else {
         address = get_next_word();
@@ -90,14 +91,14 @@ struct operands_t format_I(WORD code)
     struct operands_t ops;
     memset(&ops, 0, sizeof(ops));
 
-    bool byte = (code >> 12) & 0x01;
-    BYTE td = (code >> 10) & 0x03;
-    BYTE rd = (code >> 6) & 0x0f;
-    BYTE ts = (code >> 4) & 0x03;
-    BYTE rs = code & 0x0f;
+    bool byte = (code >> 12) & 0x0001;
+    BYTE td = (code >> 10) & 0x0003;
+    BYTE rd = (code >> 6) & 0x000f;
+    BYTE ts = (code >> 4) & 0x0003;
+    BYTE rs = code & 0x000f;
 
-    ops.dest = get_address(td, rd, byte);
     ops.src = get_address(ts, rs, byte);
+    ops.dest = get_address(td, rd, byte);
 
     return ops;
 }
@@ -193,6 +194,8 @@ struct operands_t format_VIII(WORD code)
 #define FMT_VI      5
 #define FMT_VII     6
 #define FMT_VIII    7
+#define FMT_IX      8
+#define FMT_X       9
 
 #define INSTRUCTION(mnemonic) \
     void __ ## mnemonic(struct operands_t *ops)
@@ -212,6 +215,17 @@ INSTRUCTION(MOV)
     put_word(ops->dest, get_word(ops->src));
 }
 
+INSTRUCTION(MOVB)
+{
+    put_byte(ops->dest, get_byte(ops->src));
+}
+
+INSTRUCTION(XOR)
+{
+    WORD value = get_word(ops->dest);
+    put_word(ops->dest, value ^ get_word(ops->src));
+}
+
 #define INSTRUCTION_DEF(mnemonic, code, group, format) \
     { ET_INSTRUCTION, #mnemonic, group, code, format, __ ## mnemonic }
 
@@ -225,12 +239,13 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF_NULL( JMP,   0x1000, GRP_2, FMT_II   ),
     INSTRUCTION_DEF_NULL( LDCR,  0x3000, GRP_1, FMT_IV   ),
     INSTRUCTION_DEF( LI,    0x0200, GRP_4, FMT_VIII ),
-    INSTRUCTION_DEF( LWPI,  0x02e0, GRP_4, FMT_VIII ),
+    INSTRUCTION_DEF( LWPI,  0x02e0, GRP_4, FMT_IX   ),
     INSTRUCTION_DEF( MOV,   0xc000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF( MOVB,  0xd000, GRP_0, FMT_I    ),
     INSTRUCTION_DEF_NULL( RTWP,  0x0380, GRP_4, FMT_VII  ),
-    INSTRUCTION_DEF_NULL( SBO,   0x1d00, GRP_2, FMT_II   ),
+    INSTRUCTION_DEF_NULL( SBO,   0x1d00, GRP_2, FMT_X   ),
     INSTRUCTION_DEF_NULL( SLA,   0x0a00, GRP_2, FMT_V    ),
-    INSTRUCTION_DEF_NULL( XOR,   0x2400, GRP_1, FMT_III  )
+    INSTRUCTION_DEF( XOR,   0x2400, GRP_1, FMT_III  )
 };
 
 struct instruction_list_t {
@@ -349,68 +364,145 @@ void execute_instruction()
     }    
 }
 
-int disassemble(int argc, char **argv)
-{
-    unsigned int tmp;
-    struct instruction_t *instruction;
-    WORD op;
-    struct operands_t operands;
-
-    if (argc != 2) {
-        printf("disassemble word, where word is word to disassemble.\n");
-        return 0;
-    }
-
-    sscanf(argv[1], "%04x", &tmp);
-    op = tmp;
-    instruction = decode_instruction(op);
-    if (instruction != 0) {
-        printf("Intruction = %s\n", instruction->mnemonic);
-            switch (instruction->format) {
-            case FMT_I:
-                operands = format_I(op);
-                printf("dest = %04x  src = %04x\n", operands.dest, operands.src);
-                break;
-            
-            case FMT_II:
-                operands = format_II(op);
-                printf("disp = %04x\n", operands.disp);
-                break;
-
-            case FMT_III:
-                operands = format_III(op);
-                printf("dest = %04x  src = %04x\n", operands.dest, operands.src);
-                break;
-
-            case FMT_IV:
-                operands = format_IV(op);
-                printf("cnt = %1x  src = %04x\n", operands.cnt, operands.src);
-                break;
-
-            case FMT_V:
-                operands = format_V(op);
-                printf("cnt = %1x  src = %04x\n", operands.cnt, operands.src);
-                break;
-
-            case FMT_VI:
-                operands = format_VI(op);
-                printf("src = %04x\n", operands.src);
-                break;
-
-            case FMT_VIII:
-                operands = format_VIII(op);
-                printf("dest = %04x\n", operands.dest);
-                break;
-            }
-    }
-
-    return 0;
-}
-
 char *ws_reg_name[] = {
     "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
     "r8", "r9", "ra", "rb", "rc", "rd", "re", "rf"
 };
+
+static inline int display_format(char* buf, BYTE t, BYTE r)
+{
+    switch(t) {
+    case 0:
+        return sprintf(buf, "%s", ws_reg_name[r]);
+
+    case 1:
+        return sprintf(buf, "*%s", ws_reg_name[r]);
+    
+    case 3:
+        return sprintf(buf, "*%s+", ws_reg_name[r]);
+    
+    case 2:
+        if (r > 0)
+            return sprintf(buf, "@>%04x(%s)", get_next_word(), ws_reg_name[r]);
+        
+        return sprintf(buf, "@>%04x", get_next_word());
+
+    default:
+        return 0;
+    };
+}
+
+WORD disassemble_instruction(WORD address)
+{
+    WORD old_pc = regs.pc;
+    WORD code;
+    struct instruction_t *instruction;
+    WORD tmp;
+    char mnemonic[5];
+    char operands[16];
+    char offset;
+    int i = 0;
+
+    strcpy(mnemonic, "nop ");
+    memset(operands, 0, 16);
+
+    regs.pc = address;
+    code = get_next_word();
+    instruction = decode_instruction(code);
+
+    if (instruction != NULL) {
+        while (instruction->mnemonic[i])
+            mnemonic[i++] = tolower(instruction->mnemonic[i]);
+        while (i < 4)
+            mnemonic[i++] = ' ';
+        
+        switch (instruction->format) {
+        case FMT_I:
+            i = display_format(operands, (code >> 4) & 0x03, code & 0x0f);
+            i += sprintf(operands + i, ",");
+            display_format(operands + i, (code >> 10) & 0x03, (code >> 6) & 0x0f);
+            break;
+
+        case FMT_II:
+            offset = (code & 0xff);
+            sprintf(operands, ">%04x", regs.pc + (offset * 2));
+            break;
+
+        case FMT_III:
+            i = display_format(operands, (code >> 4) & 0x03, code & 0x0f);
+            sprintf(operands + i, ",%s", ws_reg_name[(code >> 6) & 0x0f]);
+            break;
+
+        case FMT_IV:            
+            i = display_format(operands, (code >> 4) & 0x03, code & 0x0f);
+            sprintf(operands + i, ",>%x", (code >> 6 & 0x0f));
+            break;
+
+        case FMT_V:
+            sprintf(operands, "%s,>%x", ws_reg_name[(code & 0x0f)], (code >> 4) & 0x0f);
+            break;
+
+        case FMT_VI:
+            display_format(operands, (code >> 4) & 0x03, code & 0x0f);
+            break;
+        
+        case FMT_VIII:
+            sprintf(operands, "%s,>%04x", ws_reg_name[code & 0x0f], get_next_word());
+            break;
+        
+        case FMT_IX:
+            sprintf(operands, ">%04x", get_next_word());
+            break;
+
+        case FMT_X:
+            sprintf(operands, ">%02x", code & 0xff);
+            break;
+        }
+    }
+
+    printf("%04x: ", address);
+    for (i = 0; i < 6; i += 2) {
+        if (regs.pc > (address + i))
+            printf("%04x ", get_word(address + i));
+        else
+            printf("     ");
+    }
+    printf("%s %s\n", mnemonic, operands);
+
+    tmp = regs.pc; 
+    regs.pc = old_pc;
+    return tmp;
+}
+
+int disassemble(int argc, char **argv)
+{
+    int matched;
+    int start;
+    int end;
+    static WORD address;
+    static WORD extend = 1;
+
+    if (1 < argc) { 
+        matched = sscanf(argv[1], "%4x-%4x", &start, &end);
+        if (matched) {
+            address = start;
+            if (matched == 1) { 
+                end = address;
+                extend = 1;
+            } else {
+                extend = end - address;
+            }
+        }
+    } else {
+        end = address + extend;
+    }
+
+    do {
+        address = disassemble_instruction(address);
+    } while (address < end);
+
+    return 0;
+}
 
 void show_registers()
 {
@@ -451,6 +543,7 @@ int registers(int argc, char **argv)
     }
 
     show_registers();
+    disassemble_instruction(regs.pc);
 
     return 0;
 }
@@ -466,6 +559,7 @@ int step(int argc, char **argv)
 
     execute_instruction();
     show_registers();
+    disassemble_instruction(regs.pc);
     return 0;
 }
 
@@ -478,7 +572,7 @@ int main(int argc, char **argv)
     shell_set_accessor(my_accessor);
     shell_initialize("tms9900 shell");
     
-    shell_add_command("disassemble", "Disassemble a word.", disassemble, false);
+    shell_add_command("disassemble", "Disassemble a word.", disassemble, true);
     shell_add_command("registers", "View/change regisgers.", registers, false);
     shell_add_command("step", "Execute single instruction.", step, true);
 
