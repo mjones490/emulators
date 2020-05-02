@@ -40,6 +40,38 @@ INSTRUCTION(BL)
    regs.pc = ops->src;
 }
 
+INSTRUCTION(BLWP)
+{
+    WORD wp = regs.wp;
+    regs.wp = get_word(ops->src);
+
+    set_register_value(13, wp);
+    set_register_value(14, regs.pc);
+    set_register_value(15, regs.st);
+
+    regs.pc = get_word(ops->src + 2);
+}
+
+INSTRUCTION(DEC)
+{
+    put_word(ops->src, get_word(ops->src) - 1);
+}
+
+INSTRUCTION(DECT)
+{
+    put_word(ops->src, get_word(ops->src) - 2);
+}
+
+INSTRUCTION(INC)
+{
+    put_word(ops->src, get_word(ops->src) + 1);
+}
+
+INSTRUCTION(INCT)
+{
+    put_word(ops->src, get_word(ops->src) + 2);
+}
+
 INSTRUCTION(JMP)
 {
     regs.pc += (ops->disp * 2);
@@ -65,6 +97,13 @@ INSTRUCTION(MOVB)
     put_byte(ops->dest, get_byte(ops->src));
 }
 
+INSTRUCTION(RTWP)
+{
+    regs.st = get_register_value(15);
+    regs.pc = get_register_value(14);
+    regs.wp = get_register_value(13);
+}
+
 INSTRUCTION(XOR)
 {
     WORD value = get_word(ops->dest);
@@ -82,13 +121,18 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF_NULL( AB,    0xb000, GRP_0, FMT_I    ), 
     INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( BL,    0x0680, GRP_3, FMT_VI   ), 
+    INSTRUCTION_DEF( BLWP,  0x0400, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( DEC,   0x0600, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( DECT,  0x0640, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( INC,   0x0580, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( INCT,  0x05c0, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( JMP,   0x1000, GRP_2, FMT_II   ),
     INSTRUCTION_DEF_NULL( LDCR,  0x3000, GRP_1, FMT_IV   ),
     INSTRUCTION_DEF( LI,    0x0200, GRP_4, FMT_VIII ),
     INSTRUCTION_DEF( LWPI,  0x02e0, GRP_4, FMT_IX   ),
     INSTRUCTION_DEF( MOV,   0xc000, GRP_0, FMT_I    ),
     INSTRUCTION_DEF( MOVB,  0xd000, GRP_0, FMT_I    ),
-    INSTRUCTION_DEF_NULL( RTWP,  0x0380, GRP_4, FMT_VII  ),
+    INSTRUCTION_DEF( RTWP,  0x0380, GRP_4, FMT_VII  ),
     INSTRUCTION_DEF_NULL( SBO,   0x1d00, GRP_2, FMT_X   ),
     INSTRUCTION_DEF_NULL( SLA,   0x0a00, GRP_2, FMT_V    ),
     INSTRUCTION_DEF( XOR,   0x2400, GRP_1, FMT_III  )
