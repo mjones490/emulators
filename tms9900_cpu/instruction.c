@@ -52,18 +52,25 @@ static inline bool check_flag(WORD flags)
     return (regs.st & flags) > 0;
 }
 
-static inline bool msb(WORD op)
+static inline WORD set_result_flags(WORD result)
 {
-    return (op & 0x8000) != 0;
+    set_flag(FLAG_EQU, result == 0);
+    set_flag(FLAG_LGT, result != 0);
+    set_flag(FLAG_AGT, (result != 0) && !msb(result));
+    return result;
+}
+
+static inline BYTE set_result_flags_byte(BYTE result)
+{
+    set_result_flags(result << 8);
+    return result;
 }
 
 static inline WORD adder(WORD op1, WORD op2)
 {
     unsigned int result32 = op1 + op2;
     WORD result = result32 & 0xffff;
-    set_flag(FLAG_EQU, result == 0);
-    set_flag(FLAG_LGT, result != 0);
-    set_flag(FLAG_AGT, (result != 0) && !msb(result));
+    set_result_flags(result);
     return result;
 }
 
@@ -78,6 +85,11 @@ static inline void compare(WORD op1, WORD op2)
 
 #define INSTRUCTION(mnemonic) \
     void __ ## mnemonic(struct operands_t *ops)
+
+INSTRUCTION(ANDI)
+{
+    put_word(ops->dest, set_result_flags(get_word(ops->dest) & get_next_word()));
+}
 
 INSTRUCTION(B)
 {
@@ -168,7 +180,7 @@ INSTRUCTION(JNE)
 
 INSTRUCTION(LI)
 {
-    put_word(ops->dest, get_next_word());
+    put_word(ops->dest, set_result_flags(get_next_word()));
 }
 
 INSTRUCTION(LWPI)
@@ -178,12 +190,17 @@ INSTRUCTION(LWPI)
 
 INSTRUCTION(MOV)
 {
-    put_word(ops->dest, get_word(ops->src));
+    put_word(ops->dest, set_result_flags(get_word(ops->src)));
 }
 
 INSTRUCTION(MOVB)
 {
-    put_byte(ops->dest, get_byte(ops->src));
+    put_byte(ops->dest, set_result_flags_byte(get_byte(ops->src)));
+}
+
+INSTRUCTION(ORI)
+{
+    put_word(ops->dest, set_result_flags(get_word(ops->dest) | get_next_word()));
 }
 
 INSTRUCTION(RTWP)
@@ -196,6 +213,21 @@ INSTRUCTION(RTWP)
 INSTRUCTION(SETO)
 {
     put_word(ops->src, 0xffff);
+}
+
+INSTRUCTION(STST)
+{
+    put_word(ops->dest, regs.st);
+}
+
+INSTRUCTION(STWP)
+{
+    put_word(ops->dest, regs.wp);
+}
+
+INSTRUCTION(SWPB)
+{
+    put_word(ops->src, (get_byte(ops->src + 1) << 8) | get_byte(ops->src));
 }
 
 INSTRUCTION(XOR)
@@ -213,6 +245,7 @@ INSTRUCTION(XOR)
 struct instruction_t instruction[] = {
     INSTRUCTION_DEF_NULL( A,     0xa000, GRP_0, FMT_I    ),
     INSTRUCTION_DEF_NULL( AB,    0xb000, GRP_0, FMT_I    ), 
+    INSTRUCTION_DEF( ANDI,  0x0240, GRP_4, FMT_VIII ),
     INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( BL,    0x0680, GRP_3, FMT_VI   ), 
     INSTRUCTION_DEF( BLWP,  0x0400, GRP_3, FMT_VI   ),
@@ -230,12 +263,16 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( JNE,   0x1600, GRP_2, FMT_II   ),
     INSTRUCTION_DEF_NULL( LDCR,  0x3000, GRP_1, FMT_IV   ),
     INSTRUCTION_DEF( LI,    0x0200, GRP_4, FMT_VIII ),
-    INSTRUCTION_DEF( LWPI,  0x02e0, GRP_4, FMT_IX   ),
+    INSTRUCTION_DEF( LWPI,  0x02e0, GRP_4, FMT_XI   ),
     INSTRUCTION_DEF( MOV,   0xc000, GRP_0, FMT_I    ),
     INSTRUCTION_DEF( MOVB,  0xd000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF( ORI,   0x0260, GRP_4, FMT_VIII ),
     INSTRUCTION_DEF( RTWP,  0x0380, GRP_4, FMT_VII  ),
     INSTRUCTION_DEF_NULL( SBO,   0x1d00, GRP_2, FMT_X   ),
     INSTRUCTION_DEF( SETO,  0x0700, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( STST,  0x02c0, GRP_4, FMT_XII  ),
+    INSTRUCTION_DEF( STWP,  0x02a0, GRP_4, FMT_XII  ),
+    INSTRUCTION_DEF( SWPB,  0x06c0, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF_NULL( SLA,   0x0a00, GRP_2, FMT_V    ),
     INSTRUCTION_DEF( XOR,   0x2400, GRP_1, FMT_III  )
 };
@@ -328,6 +365,7 @@ void execute_instruction()
             break;
             
         case FMT_II:
+        case FMT_X:
             operands = format_II(op);
             break;
 
@@ -348,6 +386,7 @@ void execute_instruction()
             break;
 
         case FMT_VIII:
+        case FMT_XII:
             operands = format_VIII(op);
             break;
         }

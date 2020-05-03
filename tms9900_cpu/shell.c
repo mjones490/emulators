@@ -120,14 +120,17 @@ WORD disassemble_instruction(WORD address)
         case FMT_VIII:
             sprintf(operands, "%s,>%04x", ws_reg_name[code & 0x0f], get_next_word());
             break;
-        
-        case FMT_IX:
-            sprintf(operands, ">%04x", get_next_word());
-            break;
 
         case FMT_X:
             sprintf(operands, ">%02x", code & 0xff);
             break;
+        
+        case FMT_XI:
+            sprintf(operands, ">%04x", get_next_word());
+            break;
+
+        case FMT_XII:
+            sprintf(operands, "%s", ws_reg_name[code & 0x0f]);
         }
     }
 

@@ -29,4 +29,9 @@ static inline BYTE lo(WORD word)
     return word & 0xff;
 }
 
+static inline bool msb(WORD op)
+{
+    return (op & 0x8000) != 0;
+}
+
 #endif // __TYPES_H
