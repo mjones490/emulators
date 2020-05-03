@@ -234,11 +234,27 @@ int step(int argc, char **argv)
     return 0;
 }
 
+void cnt_inst()
+{
+    unsigned int code;
+    int counter = 0;
+    for (code = 0; code <= 0xffff; code++) {
+        if (decode_instruction(code & 0xffff) != NULL)
+            counter++;
+        printf("\rChecking %04x.  %04x valid.", code, counter);
+
+    }
+
+    printf("\n");
+}
+
 int main(int argc, char **argv)
 {
     cpu_state.bus = my_accessor;
 
     init_instruction();
+    cnt_inst();
+
     ram = malloc(ram_size);
     shell_set_accessor(my_accessor);
     shell_initialize("tms9900 shell");

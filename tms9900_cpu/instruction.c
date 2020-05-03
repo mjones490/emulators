@@ -26,6 +26,56 @@ struct instruction_group_t instruction_group[] = {
 #define GRP_3 3
 #define GRP_4 4
 
+#define FLAG_LGT    0x8000 // Logical Greater Than
+#define FLAG_AGT    0x4000 // Arithmatic Greater Than
+#define FLAG_EQU    0x2000 // Equal
+#define FLAG_CRY    0x1000 // Carry
+#define FLAG_OVF    0x0800 // Overflow
+#define FLAG_PAR    0x0400 // Parity
+#define FLAG_XOP    0x0200 // Extended Operation
+
+static inline void set_flag(WORD flags, bool state)
+{
+    if (state)
+        regs.st |= flags;
+    else
+        regs.st &= ~flags;
+}
+
+static inline void toggle_flag(WORD flags)
+{
+    regs.st ^= flags;
+}
+
+static inline bool check_flag(WORD flags)
+{
+    return (regs.st & flags) > 0;
+}
+
+static inline bool msb(WORD op)
+{
+    return (op & 0x8000) != 0;
+}
+
+static inline WORD adder(WORD op1, WORD op2)
+{
+    unsigned int result32 = op1 + op2;
+    WORD result = result32 & 0xffff;
+    set_flag(FLAG_EQU, result == 0);
+    set_flag(FLAG_LGT, result != 0);
+    set_flag(FLAG_AGT, (result != 0) && !msb(result));
+    return result;
+}
+
+static inline void compare(WORD op1, WORD op2)
+{
+    set_flag(FLAG_EQU, op1 == op2);
+    set_flag(FLAG_LGT, (msb(op1) && !msb(op2)) ||
+        ((msb(op1) == msb(op2)) && msb(op2 - op1)));
+    set_flag(FLAG_AGT, (!msb(op1) && msb(op2)) ||
+        ((msb(op1) == msb(op2)) && msb(op2 - op1)));
+}
+
 #define INSTRUCTION(mnemonic) \
     void __ ## mnemonic(struct operands_t *ops)
 
@@ -52,6 +102,21 @@ INSTRUCTION(BLWP)
     regs.pc = get_word(ops->src + 2);
 }
 
+INSTRUCTION(C)
+{
+    compare(get_word(ops->src), get_word(ops->dest));
+}
+
+INSTRUCTION(CB)
+{
+    compare(get_byte(ops->src) << 8, get_byte(ops->dest) << 8);
+}
+
+INSTRUCTION(CI)
+{   
+    compare(get_word(ops->dest), get_next_word());
+}
+
 INSTRUCTION(CLR)
 {
     put_word(ops->src, 0x0000);
@@ -59,22 +124,22 @@ INSTRUCTION(CLR)
 
 INSTRUCTION(DEC)
 {
-    put_word(ops->src, get_word(ops->src) - 1);
+    put_word(ops->src, adder(get_word(ops->src), 0xffff));
 }
 
 INSTRUCTION(DECT)
 {
-    put_word(ops->src, get_word(ops->src) - 2);
+    put_word(ops->src, adder(get_word(ops->src), 0xfffe));
 }
 
 INSTRUCTION(INC)
 {
-    put_word(ops->src, get_word(ops->src) + 1);
+    put_word(ops->src, adder(get_word(ops->src), 0x0001));
 }
 
 INSTRUCTION(INCT)
 {
-    put_word(ops->src, get_word(ops->src) + 2);
+    put_word(ops->src, adder(get_word(ops->src), 0x0002));
 }
 
 INSTRUCTION(INV)
@@ -82,9 +147,23 @@ INSTRUCTION(INV)
     put_word(ops->src, get_word(ops->src) ^ 0xffff);
 }
 
+#define JUMP(condition) \
+    if (condition) \
+        regs.pc += (ops->disp * 2)
+
 INSTRUCTION(JMP)
 {
-    regs.pc += (ops->disp * 2);
+    JUMP(true);
+}
+
+INSTRUCTION(JEQ)
+{
+    JUMP(check_flag(FLAG_EQU));
+}
+
+INSTRUCTION(JNE)
+{
+    JUMP(!check_flag(FLAG_EQU));
 }
 
 INSTRUCTION(LI)
@@ -137,13 +216,18 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( BL,    0x0680, GRP_3, FMT_VI   ), 
     INSTRUCTION_DEF( BLWP,  0x0400, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( C,     0x8000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF( CB,    0x9000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF( CI,    0x0280, GRP_4, FMT_VIII ),
     INSTRUCTION_DEF( CLR,   0x04c0, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( DEC,   0x0600, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( DECT,  0x0640, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( INC,   0x0580, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( INCT,  0x05c0, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( INV,   0x0540, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( JEQ,   0x1300, GRP_2, FMT_II   ),
     INSTRUCTION_DEF( JMP,   0x1000, GRP_2, FMT_II   ),
+    INSTRUCTION_DEF( JNE,   0x1600, GRP_2, FMT_II   ),
     INSTRUCTION_DEF_NULL( LDCR,  0x3000, GRP_1, FMT_IV   ),
     INSTRUCTION_DEF( LI,    0x0200, GRP_4, FMT_VIII ),
     INSTRUCTION_DEF( LWPI,  0x02e0, GRP_4, FMT_IX   ),
