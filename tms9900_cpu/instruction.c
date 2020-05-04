@@ -66,11 +66,28 @@ static inline BYTE set_result_flags_byte(BYTE result)
     return result;
 }
 
+static inline void set_parity_flag(BYTE result)
+{
+    result ^= result >> 4;
+    result ^= result >> 2;
+    result ^= result >> 1;
+    set_flag(FLAG_PAR, result & 0x01);
+}
 static inline WORD adder(WORD op1, WORD op2)
 {
     unsigned int result32 = op1 + op2;
     WORD result = result32 & 0xffff;
     set_result_flags(result);
+    set_flag(FLAG_CRY, (result32 & 0x10000) != 0);
+    set_flag(FLAG_OVF, (msb(op1) == msb(op2)) && (msb(result) != msb(op1)));
+
+    return result;
+}
+
+static inline BYTE adder_byte(BYTE op1, BYTE op2)
+{
+    BYTE result = adder(op1 << 8, op2 << 8) >> 8;
+    set_parity_flag(result);
     return result;
 }
 
@@ -85,6 +102,16 @@ static inline void compare(WORD op1, WORD op2)
 
 #define INSTRUCTION(mnemonic) \
     void __ ## mnemonic(struct operands_t *ops)
+
+INSTRUCTION(A)
+{
+    put_word(ops->dest, adder(get_word(ops->dest), get_word(ops->src)));
+}
+
+INSTRUCTION(AB)
+{
+    put_byte(ops->dest, adder_byte(get_byte(ops->dest), get_byte(ops->src)));
+}
 
 INSTRUCTION(ANDI)
 {
@@ -210,6 +237,16 @@ INSTRUCTION(RTWP)
     regs.wp = get_register_value(13);
 }
 
+INSTRUCTION(S)
+{
+    put_word(ops->dest, adder(get_word(ops->dest), -get_word(ops->src)));
+}
+
+INSTRUCTION(SB)
+{
+    put_byte(ops->dest, adder_byte(get_byte(ops->dest), -get_byte(ops->src)));
+}
+
 INSTRUCTION(SETO)
 {
     put_word(ops->src, 0xffff);
@@ -243,8 +280,8 @@ INSTRUCTION(XOR)
     { ET_INSTRUCTION, #mnemonic, group, code, format, NULL }
 
 struct instruction_t instruction[] = {
-    INSTRUCTION_DEF_NULL( A,     0xa000, GRP_0, FMT_I    ),
-    INSTRUCTION_DEF_NULL( AB,    0xb000, GRP_0, FMT_I    ), 
+    INSTRUCTION_DEF( A,     0xa000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF( AB,    0xb000, GRP_0, FMT_I    ), 
     INSTRUCTION_DEF( ANDI,  0x0240, GRP_4, FMT_VIII ),
     INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( BL,    0x0680, GRP_3, FMT_VI   ), 
@@ -269,6 +306,8 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( ORI,   0x0260, GRP_4, FMT_VIII ),
     INSTRUCTION_DEF( RTWP,  0x0380, GRP_4, FMT_VII  ),
     INSTRUCTION_DEF_NULL( SBO,   0x1d00, GRP_2, FMT_X   ),
+    INSTRUCTION_DEF( S,     0x6000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF( SB,    0x7000, GRP_0, FMT_I    ), 
     INSTRUCTION_DEF( SETO,  0x0700, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( STST,  0x02c0, GRP_4, FMT_XII  ),
     INSTRUCTION_DEF( STWP,  0x02a0, GRP_4, FMT_XII  ),
