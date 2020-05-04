@@ -18,4 +18,8 @@ void shell_print(char *string);
 void shell_set_anonymous_command_function(command_func_t command_function);
 void shell_read_key();
 bool shell_check_key();
+int shell_load_history(char *filename);
+int shell_save_history(char *filename);
+
+#include "shell_extended_commands.h"
 #endif
