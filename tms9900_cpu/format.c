@@ -90,6 +90,12 @@ struct operands_t format_V(WORD code)
 
     ops.cnt = (code >> 4) & 0x0f;
     ops.src = get_register_address(rs);
+    if (ops.cnt == 0) {
+        ops.cnt = get_register_value(0) & 0x0f;
+        if (ops.cnt == 0)
+            ops.cnt = 0x10;
+    }
+
 
     return ops;
 }

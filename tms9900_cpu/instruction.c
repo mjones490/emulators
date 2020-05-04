@@ -113,6 +113,14 @@ INSTRUCTION(AB)
     put_byte(ops->dest, adder_byte(get_byte(ops->dest), get_byte(ops->src)));
 }
 
+INSTRUCTION(ABS)
+{
+    WORD result = set_result_flags(get_word(ops->src));
+    set_flag(FLAG_OVF, result == 0x8000);
+    if (msb(result))
+        put_word(ops->src, -result);
+}
+
 INSTRUCTION(ANDI)
 {
     put_word(ops->dest, set_result_flags(get_word(ops->dest) & get_next_word()));
@@ -225,6 +233,11 @@ INSTRUCTION(MOVB)
     put_byte(ops->dest, set_result_flags_byte(get_byte(ops->src)));
 }
 
+INSTRUCTION(NEG)
+{
+    put_word(ops->src, adder(~get_word(ops->src), 1));
+}
+
 INSTRUCTION(ORI)
 {
     put_word(ops->dest, set_result_flags(get_word(ops->dest) | get_next_word()));
@@ -250,6 +263,67 @@ INSTRUCTION(SB)
 INSTRUCTION(SETO)
 {
     put_word(ops->src, 0xffff);
+}
+
+INSTRUCTION(SLA)
+{
+    int i;
+    unsigned int result = get_word(ops->src);
+    bool ovf = msb(result);
+    
+    set_flag(FLAG_OVF, false);
+    
+    for (i = 0; i < ops->cnt; i++) {
+        result <<= 1;
+        if (msb(result) != ovf)
+            set_flag(FLAG_OVF, true);
+    }
+
+    set_flag(FLAG_CRY, result & 0x10000);
+    set_result_flags(result);
+    put_word(ops->src, result);
+}
+
+INSTRUCTION(SRA)
+{
+    int i;
+    WORD result = get_word(ops->src);
+
+    for (i = 0; i < ops->cnt; i++) {
+        set_flag(FLAG_CRY, result & 0x0001);
+        result = (result >> 1) | (result & 0x8000);
+    }
+
+    set_result_flags(result);
+    put_word(ops->src, result);
+}
+
+INSTRUCTION(SRC)
+{
+    int i;
+    WORD result = get_word(ops->src);
+
+    for (i = 0; i < ops->cnt; i++) {
+        set_flag(FLAG_CRY, result & 0x0001);
+        result = (result >> 1) | (result << 15);
+    }
+
+    set_result_flags(result);
+    put_word(ops->src, result);
+}
+
+INSTRUCTION(SRL)
+{
+    int i;
+    WORD result = get_word(ops->src);
+
+    for (i = 0; i < ops->cnt; i++) {
+        set_flag(FLAG_CRY, result & 0x0001);
+        result >>= 1;
+    }
+
+    set_result_flags(result);
+    put_word(ops->src, result);
 }
 
 INSTRUCTION(STST)
@@ -282,6 +356,7 @@ INSTRUCTION(XOR)
 struct instruction_t instruction[] = {
     INSTRUCTION_DEF( A,     0xa000, GRP_0, FMT_I    ),
     INSTRUCTION_DEF( AB,    0xb000, GRP_0, FMT_I    ), 
+    INSTRUCTION_DEF( ABS,   0x0740, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( ANDI,  0x0240, GRP_4, FMT_VIII ),
     INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( BL,    0x0680, GRP_3, FMT_VI   ), 
@@ -303,16 +378,20 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( LWPI,  0x02e0, GRP_4, FMT_XI   ),
     INSTRUCTION_DEF( MOV,   0xc000, GRP_0, FMT_I    ),
     INSTRUCTION_DEF( MOVB,  0xd000, GRP_0, FMT_I    ),
+    INSTRUCTION_DEF( NEG,   0x0500, GRP_3, FMT_VI   ),
     INSTRUCTION_DEF( ORI,   0x0260, GRP_4, FMT_VIII ),
     INSTRUCTION_DEF( RTWP,  0x0380, GRP_4, FMT_VII  ),
     INSTRUCTION_DEF_NULL( SBO,   0x1d00, GRP_2, FMT_X   ),
     INSTRUCTION_DEF( S,     0x6000, GRP_0, FMT_I    ),
     INSTRUCTION_DEF( SB,    0x7000, GRP_0, FMT_I    ), 
     INSTRUCTION_DEF( SETO,  0x0700, GRP_3, FMT_VI   ),
+    INSTRUCTION_DEF( SLA,   0x0a00, GRP_2, FMT_V    ),
+    INSTRUCTION_DEF( SRA,   0x0800, GRP_2, FMT_V    ),
+    INSTRUCTION_DEF( SRC,   0x0b00, GRP_2, FMT_V    ),
+    INSTRUCTION_DEF( SRL,   0x0900, GRP_2, FMT_V    ),
     INSTRUCTION_DEF( STST,  0x02c0, GRP_4, FMT_XII  ),
     INSTRUCTION_DEF( STWP,  0x02a0, GRP_4, FMT_XII  ),
     INSTRUCTION_DEF( SWPB,  0x06c0, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF_NULL( SLA,   0x0a00, GRP_2, FMT_V    ),
     INSTRUCTION_DEF( XOR,   0x2400, GRP_1, FMT_III  )
 };
 
