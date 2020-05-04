@@ -29,8 +29,11 @@ int main(int argc, char **argv)
 {
     shell_set_accessor(RAM_accessor);
     shell_initialize("simple_shell");
+    shell_load_history("./.simple_shell_history");
+    shell_set_extended_commands(SEC_LOAD | SEC_SAVE | SEC_LS | SEC_CLEAR);
     old_help = shell_add_command("help", "Shell help.", new_help, false);
     shell_loop();
+    shell_save_history("./.simple_shell_history");
     shell_finalize();
     printf("\n");
     return 0;

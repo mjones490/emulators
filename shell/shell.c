@@ -10,6 +10,14 @@
 #include "shell.h"
 #include "command.h"
 
+static inline char *rtrim(char *str)
+{
+    char *back = str + strlen(str);
+    while (isspace(*--back));
+    *(back + 1) = '\0';
+    return str;
+}
+
 static inline char *append_char(char *buffer, char ch)
 {
     if (buffer)
@@ -133,11 +141,18 @@ static void line_handler(char *line)
 {
     char **argv = NULL;
     int argc = 0;
+    HIST_ENTRY *he;
+    HISTORY_STATE *hs;
 
     if (line) {
         if (*line) {
+            rtrim(line);
             argc = parse(line, &argv);
-            add_history(line);
+            hs = history_get_history_state();
+            he = history_get(hs->length);
+            if (he == NULL || strcmp(line, he->line)) {
+                add_history(line);
+            }
         }
 
         rl_replace_line("", true);
@@ -202,6 +217,19 @@ void shell_loop()
         if (shell_check_key())
             shell_read_key();
     }
+}
+
+int shell_save_history(char *filename)
+{
+    return write_history(filename);
+}
+
+int shell_load_history(char *filename)
+{
+    int ret = read_history(filename);
+    HISTORY_STATE *hs = history_get_history_state();
+    history_set_pos(hs->length);
+    return ret;
 }
 
 void shell_initialize(char *prompt)
