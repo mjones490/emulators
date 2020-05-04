@@ -9,9 +9,8 @@ enum entry_type {
 struct instruction_t {
     enum entry_type     type;    
     char                *mnemonic;
-    char                group;
     WORD                code;
-    char                format;
+    int                 format;
     void                (*handler)(struct operands_t *ops);
 };
 

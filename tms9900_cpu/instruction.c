@@ -26,6 +26,24 @@ struct instruction_group_t instruction_group[] = {
 #define GRP_3 3
 #define GRP_4 4
 
+static struct {
+    int group;
+    struct operands_t (*handler)(WORD);
+} format[] = {
+    { GRP_0, format_I       }, // FMT_I
+    { GRP_2, format_II      }, // FMT_II
+    { GRP_1, format_III     }, // FMT_III
+    { GRP_1, format_IV      }, // FMT_IV
+    { GRP_2, format_V       }, // FMT_V
+    { GRP_3, format_VI      }, // FMT_VI
+    { GRP_4, NULL           }, // FMT_VII
+    { GRP_4, format_VIII    }, // FMT_VIII
+    { GRP_1, NULL           }, // FMT_IX (Not implemented yet)
+    { GRP_2, format_II      }, // FMT_X
+    { GRP_4, NULL           }, // FMT_XI
+    { GRP_4, format_VIII    }, // FMT_XII
+};
+
 #define FLAG_LGT    0x8000 // Logical Greater Than
 #define FLAG_AGT    0x4000 // Arithmatic Greater Than
 #define FLAG_EQU    0x2000 // Equal
@@ -347,52 +365,52 @@ INSTRUCTION(XOR)
     put_word(ops->dest, value ^ get_word(ops->src));
 }
 
-#define INSTRUCTION_DEF(mnemonic, code, group, format) \
-    { ET_INSTRUCTION, #mnemonic, group, code, format, __ ## mnemonic }
+#define INSTRUCTION_DEF(mnemonic, code, format) \
+    { ET_INSTRUCTION, #mnemonic, code, format, __ ## mnemonic }
 
-#define INSTRUCTION_DEF_NULL(mnemonic, code, group, format) \
-    { ET_INSTRUCTION, #mnemonic, group, code, format, NULL }
+#define INSTRUCTION_DEF_NULL(mnemonic, code, format) \
+    { ET_INSTRUCTION, #mnemonic, code, format, NULL }
 
 struct instruction_t instruction[] = {
-    INSTRUCTION_DEF( A,     0xa000, GRP_0, FMT_I    ),
-    INSTRUCTION_DEF( AB,    0xb000, GRP_0, FMT_I    ), 
-    INSTRUCTION_DEF( ABS,   0x0740, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( ANDI,  0x0240, GRP_4, FMT_VIII ),
-    INSTRUCTION_DEF( B,     0x0440, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( BL,    0x0680, GRP_3, FMT_VI   ), 
-    INSTRUCTION_DEF( BLWP,  0x0400, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( C,     0x8000, GRP_0, FMT_I    ),
-    INSTRUCTION_DEF( CB,    0x9000, GRP_0, FMT_I    ),
-    INSTRUCTION_DEF( CI,    0x0280, GRP_4, FMT_VIII ),
-    INSTRUCTION_DEF( CLR,   0x04c0, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( DEC,   0x0600, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( DECT,  0x0640, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( INC,   0x0580, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( INCT,  0x05c0, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( INV,   0x0540, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( JEQ,   0x1300, GRP_2, FMT_II   ),
-    INSTRUCTION_DEF( JMP,   0x1000, GRP_2, FMT_II   ),
-    INSTRUCTION_DEF( JNE,   0x1600, GRP_2, FMT_II   ),
-    INSTRUCTION_DEF_NULL( LDCR,  0x3000, GRP_1, FMT_IV   ),
-    INSTRUCTION_DEF( LI,    0x0200, GRP_4, FMT_VIII ),
-    INSTRUCTION_DEF( LWPI,  0x02e0, GRP_4, FMT_XI   ),
-    INSTRUCTION_DEF( MOV,   0xc000, GRP_0, FMT_I    ),
-    INSTRUCTION_DEF( MOVB,  0xd000, GRP_0, FMT_I    ),
-    INSTRUCTION_DEF( NEG,   0x0500, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( ORI,   0x0260, GRP_4, FMT_VIII ),
-    INSTRUCTION_DEF( RTWP,  0x0380, GRP_4, FMT_VII  ),
-    INSTRUCTION_DEF_NULL( SBO,   0x1d00, GRP_2, FMT_X   ),
-    INSTRUCTION_DEF( S,     0x6000, GRP_0, FMT_I    ),
-    INSTRUCTION_DEF( SB,    0x7000, GRP_0, FMT_I    ), 
-    INSTRUCTION_DEF( SETO,  0x0700, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( SLA,   0x0a00, GRP_2, FMT_V    ),
-    INSTRUCTION_DEF( SRA,   0x0800, GRP_2, FMT_V    ),
-    INSTRUCTION_DEF( SRC,   0x0b00, GRP_2, FMT_V    ),
-    INSTRUCTION_DEF( SRL,   0x0900, GRP_2, FMT_V    ),
-    INSTRUCTION_DEF( STST,  0x02c0, GRP_4, FMT_XII  ),
-    INSTRUCTION_DEF( STWP,  0x02a0, GRP_4, FMT_XII  ),
-    INSTRUCTION_DEF( SWPB,  0x06c0, GRP_3, FMT_VI   ),
-    INSTRUCTION_DEF( XOR,   0x2400, GRP_1, FMT_III  )
+    INSTRUCTION_DEF( A,     0xa000, FMT_I    ),
+    INSTRUCTION_DEF( AB,    0xb000, FMT_I    ), 
+    INSTRUCTION_DEF( ABS,   0x0740, FMT_VI   ),
+    INSTRUCTION_DEF( ANDI,  0x0240, FMT_VIII ),
+    INSTRUCTION_DEF( B,     0x0440, FMT_VI   ),
+    INSTRUCTION_DEF( BL,    0x0680, FMT_VI   ), 
+    INSTRUCTION_DEF( BLWP,  0x0400, FMT_VI   ),
+    INSTRUCTION_DEF( C,     0x8000, FMT_I    ),
+    INSTRUCTION_DEF( CB,    0x9000, FMT_I    ),
+    INSTRUCTION_DEF( CI,    0x0280, FMT_VIII ),
+    INSTRUCTION_DEF( CLR,   0x04c0, FMT_VI   ),
+    INSTRUCTION_DEF( DEC,   0x0600, FMT_VI   ),
+    INSTRUCTION_DEF( DECT,  0x0640, FMT_VI   ),
+    INSTRUCTION_DEF( INC,   0x0580, FMT_VI   ),
+    INSTRUCTION_DEF( INCT,  0x05c0, FMT_VI   ),
+    INSTRUCTION_DEF( INV,   0x0540, FMT_VI   ),
+    INSTRUCTION_DEF( JEQ,   0x1300, FMT_II   ),
+    INSTRUCTION_DEF( JMP,   0x1000, FMT_II   ),
+    INSTRUCTION_DEF( JNE,   0x1600, FMT_II   ),
+    INSTRUCTION_DEF_NULL( LDCR,  0x3000,  FMT_IV   ),
+    INSTRUCTION_DEF( LI,    0x0200, FMT_VIII ),
+    INSTRUCTION_DEF( LWPI,  0x02e0, FMT_XI   ),
+    INSTRUCTION_DEF( MOV,   0xc000, FMT_I    ),
+    INSTRUCTION_DEF( MOVB,  0xd000, FMT_I    ),
+    INSTRUCTION_DEF( NEG,   0x0500, FMT_VI   ),
+    INSTRUCTION_DEF( ORI,   0x0260, FMT_VIII ),
+    INSTRUCTION_DEF( RTWP,  0x0380, FMT_VII  ),
+    INSTRUCTION_DEF_NULL( SBO,   0x1d00, FMT_X   ),
+    INSTRUCTION_DEF( S,     0x6000, FMT_I    ),
+    INSTRUCTION_DEF( SB,    0x7000, FMT_I    ), 
+    INSTRUCTION_DEF( SETO,  0x0700, FMT_VI   ),
+    INSTRUCTION_DEF( SLA,   0x0a00, FMT_V    ),
+    INSTRUCTION_DEF( SRA,   0x0800, FMT_V    ),
+    INSTRUCTION_DEF( SRC,   0x0b00, FMT_V    ),
+    INSTRUCTION_DEF( SRL,   0x0900, FMT_V    ),
+    INSTRUCTION_DEF( STST,  0x02c0, FMT_XII  ),
+    INSTRUCTION_DEF( STWP,  0x02a0, FMT_XII  ),
+    INSTRUCTION_DEF( SWPB,  0x06c0, FMT_VI   ),
+    INSTRUCTION_DEF( XOR,   0x2400, FMT_III  )
 };
 
 struct instruction_list_t {
@@ -430,7 +448,7 @@ void init_instruction()
         branch = root;
         while (true) {
             inst_ndx = get_index(group, instruction[i].code);
-            if (group == instruction[i].group) {
+            if (group == format[instruction[i].format].group) {
                 branch->list[inst_ndx] = (void *) &instruction[i];
                 break;
             } else {
@@ -477,38 +495,8 @@ void execute_instruction()
     struct operands_t operands;
 
     if (instruction != 0 && instruction->handler != NULL) {
-        switch (instruction->format) {
-        case FMT_I:
-            operands = format_I(op);
-            break;
-            
-        case FMT_II:
-        case FMT_X:
-            operands = format_II(op);
-            break;
-
-        case FMT_III:
-            operands = format_III(op);
-            break;
-
-        case FMT_IV:
-            operands = format_IV(op);
-            break;
-
-        case FMT_V:
-            operands = format_V(op);
-            break;
-
-        case FMT_VI:
-            operands = format_VI(op);
-            break;
-
-        case FMT_VIII:
-        case FMT_XII:
-            operands = format_VIII(op);
-            break;
-        }
-
+        if (format[instruction->format].handler != NULL)
+            operands = format[instruction->format].handler(op);
         instruction->handler(&operands);
     }    
 }
