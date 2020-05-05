@@ -187,6 +187,16 @@ INSTRUCTION(CLR)
     put_word(ops->src, 0x0000);
 }
 
+INSTRUCTION(COC)
+{
+    set_flag(FLAG_EQU, (get_word(ops->src) & ~get_word(ops->dest)) == 0);
+}
+
+INSTRUCTION(CZC)
+{
+    set_flag(FLAG_EQU, (get_word(ops->src) & get_word(ops->dest)) == 0);
+}
+
 INSTRUCTION(DEC)
 {
     put_word(ops->src, adder(get_word(ops->src), 0xffff));
@@ -302,6 +312,18 @@ INSTRUCTION(SLA)
     put_word(ops->src, result);
 }
 
+INSTRUCTION(SOC)
+{
+    put_word(ops->dest, set_result_flags(get_word(ops->src) | get_word(ops->dest)));
+}
+
+INSTRUCTION(SOCB)
+{
+    BYTE result = set_result_flags_byte(get_byte(ops->src) | get_byte(ops->dest));
+    set_parity_flag(result);
+    put_byte(ops->dest, result);
+}
+
 INSTRUCTION(SRA)
 {
     int i;
@@ -359,6 +381,19 @@ INSTRUCTION(SWPB)
     put_word(ops->src, (get_byte(ops->src + 1) << 8) | get_byte(ops->src));
 }
 
+INSTRUCTION(SZC)
+{
+    put_word(ops->dest, set_result_flags(~get_word(ops->src) & get_word(ops->dest)));
+}
+
+INSTRUCTION(SZCB)
+{
+    BYTE result = set_result_flags_byte(~get_byte(ops->src) & get_byte(ops->dest));
+    set_parity_flag(result);
+    put_byte(ops->dest, result);
+}
+
+
 INSTRUCTION(XOR)
 {
     WORD value = get_word(ops->dest);
@@ -383,6 +418,8 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( CB,    0x9000, FMT_I    ),
     INSTRUCTION_DEF( CI,    0x0280, FMT_VIII ),
     INSTRUCTION_DEF( CLR,   0x04c0, FMT_VI   ),
+    INSTRUCTION_DEF( COC,   0x2000, FMT_III  ),
+    INSTRUCTION_DEF( CZC,   0x2400, FMT_III  ),
     INSTRUCTION_DEF( DEC,   0x0600, FMT_VI   ),
     INSTRUCTION_DEF( DECT,  0x0640, FMT_VI   ),
     INSTRUCTION_DEF( INC,   0x0580, FMT_VI   ),
@@ -404,13 +441,17 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( SB,    0x7000, FMT_I    ), 
     INSTRUCTION_DEF( SETO,  0x0700, FMT_VI   ),
     INSTRUCTION_DEF( SLA,   0x0a00, FMT_V    ),
+    INSTRUCTION_DEF( SOC,   0xe000, FMT_I    ),
+    INSTRUCTION_DEF( SOCB,  0xf000, FMT_I    ),
     INSTRUCTION_DEF( SRA,   0x0800, FMT_V    ),
     INSTRUCTION_DEF( SRC,   0x0b00, FMT_V    ),
     INSTRUCTION_DEF( SRL,   0x0900, FMT_V    ),
     INSTRUCTION_DEF( STST,  0x02c0, FMT_XII  ),
     INSTRUCTION_DEF( STWP,  0x02a0, FMT_XII  ),
+    INSTRUCTION_DEF( SZC,   0x4000, FMT_I    ),
+    INSTRUCTION_DEF( SZCB,  0x5000, FMT_I    ),
     INSTRUCTION_DEF( SWPB,  0x06c0, FMT_VI   ),
-    INSTRUCTION_DEF( XOR,   0x2400, FMT_III  )
+    INSTRUCTION_DEF( XOR,   0x2800, FMT_III  )
 };
 
 struct instruction_list_t {

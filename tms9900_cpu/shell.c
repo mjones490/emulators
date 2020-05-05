@@ -261,12 +261,15 @@ int main(int argc, char **argv)
     ram = malloc(ram_size);
     shell_set_accessor(my_accessor);
     shell_initialize("tms9900 shell");
-    
+   
+    shell_set_extended_commands(SEC_LOAD | SEC_SAVE | SEC_CLEAR);
     shell_add_command("disassemble", "Disassemble a word.", disassemble, true);
     shell_add_command("registers", "View/change regisgers.", registers, false);
     shell_add_command("step", "Execute single instruction.", step, true);
 
+    shell_load_history("./.shell_history");
     shell_loop();
+    shell_save_history("./.shell_history");
     shell_finalize();
     printf("\n");
 }
