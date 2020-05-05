@@ -100,6 +100,7 @@ WORD disassemble_instruction(WORD address)
             break;
 
         case FMT_III:
+        case FMT_IX:
             i = display_format(operands, (code >> 4) & 0x03, code & 0x0f);
             sprintf(operands + i, ",%s", ws_reg_name[(code >> 6) & 0x0f]);
             break;

@@ -38,7 +38,7 @@ static struct {
     { GRP_3, format_VI      }, // FMT_VI
     { GRP_4, NULL           }, // FMT_VII
     { GRP_4, format_VIII    }, // FMT_VIII
-    { GRP_1, NULL           }, // FMT_IX (Not implemented yet)
+    { GRP_1, format_III     }, // FMT_IX (Not implemented yet)
     { GRP_2, format_II      }, // FMT_X
     { GRP_4, NULL           }, // FMT_XI
     { GRP_4, format_VIII    }, // FMT_XII
@@ -207,6 +207,21 @@ INSTRUCTION(DECT)
     put_word(ops->src, adder(get_word(ops->src), 0xfffe));
 }
 
+INSTRUCTION(DIV)
+{
+    unsigned int dividend = get_word(ops->dest);
+    WORD divisor = get_word(ops->src);
+
+    if (divisor > dividend) {
+        set_flag(FLAG_OVF, false);
+        dividend = (dividend << 16) | get_word(ops->dest + 2);
+        put_word(ops->dest, (dividend / divisor));
+        put_word(ops->dest + 2, dividend % divisor);
+    } else {
+        set_flag(FLAG_OVF, true);
+    }
+}
+
 INSTRUCTION(INC)
 {
     put_word(ops->src, adder(get_word(ops->src), 0x0001));
@@ -259,6 +274,13 @@ INSTRUCTION(MOV)
 INSTRUCTION(MOVB)
 {
     put_byte(ops->dest, set_result_flags_byte(get_byte(ops->src)));
+}
+
+INSTRUCTION(MPY)
+{
+    unsigned int product = (unsigned int) get_word(ops->src) * (unsigned int) get_word(ops->dest);
+    put_word(ops->dest, (WORD)(product >> 16));
+    put_word(ops->dest + 2, (WORD)(product & 0xffff));
 }
 
 INSTRUCTION(NEG)
@@ -422,6 +444,7 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( CZC,   0x2400, FMT_III  ),
     INSTRUCTION_DEF( DEC,   0x0600, FMT_VI   ),
     INSTRUCTION_DEF( DECT,  0x0640, FMT_VI   ),
+    INSTRUCTION_DEF( DIV,   0x3c00, FMT_IX  ),
     INSTRUCTION_DEF( INC,   0x0580, FMT_VI   ),
     INSTRUCTION_DEF( INCT,  0x05c0, FMT_VI   ),
     INSTRUCTION_DEF( INV,   0x0540, FMT_VI   ),
@@ -433,6 +456,7 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( LWPI,  0x02e0, FMT_XI   ),
     INSTRUCTION_DEF( MOV,   0xc000, FMT_I    ),
     INSTRUCTION_DEF( MOVB,  0xd000, FMT_I    ),
+    INSTRUCTION_DEF( MPY,   0x3800, FMT_IX   ),
     INSTRUCTION_DEF( NEG,   0x0500, FMT_VI   ),
     INSTRUCTION_DEF( ORI,   0x0260, FMT_VIII ),
     INSTRUCTION_DEF( RTWP,  0x0380, FMT_VII  ),
