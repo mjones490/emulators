@@ -494,7 +494,10 @@ void init_instruction()
 {
     size_t instruction_count = sizeof(instruction) / sizeof(struct instruction_t);
     
-    size_t list_size = sizeof(enum entry_type) +  (sizeof(struct instruction_list_t *) * instruction_group[0].mask);
+    struct instruction_list_t *branch;
+    struct instruction_list_t *new_branch;
+
+    size_t list_size = sizeof(int) +  (sizeof(branch) * (instruction_group[0].mask + 2));
     root = malloc(list_size);
     memset(root, 0, list_size);
     root->type = ET_LIST;
@@ -502,9 +505,6 @@ void init_instruction()
     int group;
     int i;
     int inst_ndx;
-
-    struct instruction_list_t *branch;
-    struct instruction_list_t *new_branch;
 
     size_t total_size = list_size;
 
@@ -519,8 +519,8 @@ void init_instruction()
             } else {
                 group++;
                 if (branch->list[inst_ndx] == NULL) {
-                    size_t list_size = sizeof(enum entry_type) +  
-                        (sizeof(struct instruction_list_t *) * instruction_group[group].mask);
+                    size_t list_size = sizeof(int) +  
+                        (sizeof(branch) * (instruction_group[group].mask + 2));
                     new_branch = malloc(list_size);
                     memset(new_branch, 0, list_size);
                     new_branch->type = ET_LIST;
@@ -566,3 +566,19 @@ void execute_instruction()
     }    
 }
 
+static void free_group(int group, struct instruction_list_t *branch)
+{
+    int i;
+
+    for (i = 0; i <= instruction_group[group].mask; i++) {
+        if (branch->list[i] == NULL)
+            continue;
+        if (branch->list[i]->type == ET_LIST)
+            free_group(group + 1, branch->list[i]);
+    }
+}
+
+void finalize_instruction()
+{
+    free_group(0, root);
+}

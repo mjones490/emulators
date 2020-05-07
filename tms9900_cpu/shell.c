@@ -272,6 +272,9 @@ int main(int argc, char **argv)
     shell_loop();
     shell_save_history("./.shell_history");
     shell_finalize();
+
+    free(ram);
+    finalize_instruction();
     printf("\n");
 }
 

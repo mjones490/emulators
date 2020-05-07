@@ -19,5 +19,5 @@ extern struct instruction_t instruction[];
 void init_instruction();
 void execute_instruction();
 struct instruction_t *decode_instruction(WORD code);
-
+void finalize_instruction();
 #endif
