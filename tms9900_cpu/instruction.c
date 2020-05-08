@@ -241,14 +241,44 @@ INSTRUCTION(INV)
     if (condition) \
         regs.pc += (ops->disp * 2)
 
-INSTRUCTION(JMP)
-{
-    JUMP(true);
-}
-
 INSTRUCTION(JEQ)
 {
     JUMP(check_flag(FLAG_EQU));
+}
+
+INSTRUCTION(JGT)
+{
+    JUMP(check_flag(FLAG_AGT));
+}
+
+INSTRUCTION(JH)
+{
+    JUMP(check_flag(FLAG_LGT) && !check_flag(FLAG_EQU));
+}
+
+INSTRUCTION(JHE)
+{
+    JUMP(check_flag(FLAG_LGT) || !check_flag(FLAG_EQU));
+}
+
+INSTRUCTION(JL)
+{
+    JUMP(!check_flag(FLAG_LGT) && !check_flag(FLAG_EQU));
+}
+
+INSTRUCTION(JLE)
+{
+    JUMP(!check_flag(FLAG_LGT) || check_flag(FLAG_EQU));
+}
+
+INSTRUCTION(JLT)
+{
+    JUMP(!check_flag(FLAG_AGT) && !check_flag(FLAG_EQU));
+}
+
+INSTRUCTION(JMP)
+{
+    JUMP(true);
 }
 
 INSTRUCTION(JNE)
@@ -449,6 +479,12 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( INCT,  0x05c0, FMT_VI   ),
     INSTRUCTION_DEF( INV,   0x0540, FMT_VI   ),
     INSTRUCTION_DEF( JEQ,   0x1300, FMT_II   ),
+    INSTRUCTION_DEF( JGT,   0x1500, FMT_II   ),
+    INSTRUCTION_DEF( JH,    0x1B00, FMT_II   ),
+    INSTRUCTION_DEF( JHE,   0x1400, FMT_II   ),
+    INSTRUCTION_DEF( JL,    0x1a00, FMT_II   ),
+    INSTRUCTION_DEF( JLE,   0x1200, FMT_II   ),
+    INSTRUCTION_DEF( JLT,   0x1100, FMT_II   ),
     INSTRUCTION_DEF( JMP,   0x1000, FMT_II   ),
     INSTRUCTION_DEF( JNE,   0x1600, FMT_II   ),
     INSTRUCTION_DEF_NULL( LDCR,  0x3000,  FMT_IV   ),
