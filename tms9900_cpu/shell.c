@@ -252,6 +252,88 @@ void cnt_inst()
     printf("\n");
 }
 
+static inline WORD shift_word(WORD value, int shift_cnt)
+{
+    if (shift_cnt < 0)
+        value >>= -shift_cnt;
+    else if (shift_cnt > 0)
+        value <<= shift_cnt;
+
+    return value;
+}   
+
+//            24
+//        20   |  28   
+//         |   |   |
+//  0000000011111111  h   
+//  0000000111110000  s
+//          11110000  mask
+//
+
+BYTE hv1, hv2;
+int input(int argc, char **argv)
+{
+    unsigned int tmp;
+    WORD soft_address;
+    WORD value;
+    WORD bit_mask;
+    int num_bits;
+
+    if (argc != 3)
+        return 0;
+
+    if (1 != sscanf(argv[1], "%x", &tmp))
+        return 0;
+
+    soft_address = tmp;
+
+    if (1 != sscanf(argv[2], "%d", &num_bits))
+        return 0;
+
+    bit_mask = shift_word((1 << num_bits) - 1, 0x28 - soft_address);
+    value = shift_word(((hv1 << 8) | hv2) & bit_mask, -(0x28 - soft_address));
+
+    printf("value = %04x, mask = %04x\n", value, bit_mask);
+    return 0;
+    
+}
+
+int output(int argc, char **argv)
+{
+    unsigned int tmp;
+    WORD soft_address;
+    WORD value;
+    WORD bit_mask;
+    WORD prev_value;
+    int num_bits;
+
+    if (argc != 4)
+        return 0;
+
+    if (1 != sscanf(argv[1], "%x", &tmp))
+        return 0;
+
+    soft_address = tmp;
+
+    if (1 != sscanf(argv[2], "%x", &tmp))
+        return 0;
+
+    value = tmp;
+
+    if (1 != sscanf(argv[3], "%d", &num_bits))
+        return 0;
+    
+    bit_mask = shift_word((1 << num_bits) - 1, 0x28 - soft_address);
+    prev_value = ((hv1 << 8) | hv2) & ~bit_mask;
+    value = prev_value | (shift_word(value, 0x28 - soft_address) & bit_mask);
+    
+    hv1 = value >> 8;
+    hv2 = value & 0xf;
+
+    printf("value = %04x, mask = %04x\n", value, bit_mask);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     cpu_state.bus = my_accessor;
@@ -267,6 +349,8 @@ int main(int argc, char **argv)
     shell_add_command("disassemble", "Disassemble a word.", disassemble, true);
     shell_add_command("registers", "View/change regisgers.", registers, false);
     shell_add_command("step", "Execute single instruction.", step, true);
+    shell_add_command("output", "", output, false);
+    shell_add_command("input", "", input, false);
 
     shell_load_history("./.shell_history");
     shell_loop();
