@@ -70,6 +70,14 @@ static inline bool check_flag(WORD flags)
     return (regs.st & flags) > 0;
 }
 
+static inline void set_parity_flag(BYTE result)
+{
+    result ^= result >> 4;
+    result ^= result >> 2;
+    result ^= result >> 1;
+    set_flag(FLAG_PAR, result & 0x01);
+}
+
 static inline WORD set_result_flags(WORD result)
 {
     set_flag(FLAG_EQU, result == 0);
@@ -81,16 +89,10 @@ static inline WORD set_result_flags(WORD result)
 static inline BYTE set_result_flags_byte(BYTE result)
 {
     set_result_flags(result << 8);
+    set_parity_flag(result);
     return result;
 }
 
-static inline void set_parity_flag(BYTE result)
-{
-    result ^= result >> 4;
-    result ^= result >> 2;
-    result ^= result >> 1;
-    set_flag(FLAG_PAR, result & 0x01);
-}
 static inline WORD adder(WORD op1, WORD op2)
 {
     unsigned int result32 = op1 + op2;
@@ -281,9 +283,29 @@ INSTRUCTION(JMP)
     JUMP(true);
 }
 
+INSTRUCTION(JNC)
+{
+    JUMP(!check_flag(FLAG_CRY));
+}
+
 INSTRUCTION(JNE)
 {
     JUMP(!check_flag(FLAG_EQU));
+}
+
+INSTRUCTION(JNO)
+{
+    JUMP(!check_flag(FLAG_OVF));
+}
+
+INSTRUCTION(JOC)
+{
+    JUMP(check_flag(FLAG_CRY));
+}
+
+INSTRUCTION(JOP)
+{
+    JUMP(check_flag(FLAG_PAR));
 }
 
 INSTRUCTION(LI)
@@ -486,7 +508,11 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( JLE,   0x1200, FMT_II   ),
     INSTRUCTION_DEF( JLT,   0x1100, FMT_II   ),
     INSTRUCTION_DEF( JMP,   0x1000, FMT_II   ),
+    INSTRUCTION_DEF( JNC,   0x1700, FMT_II   ),
     INSTRUCTION_DEF( JNE,   0x1600, FMT_II   ),
+    INSTRUCTION_DEF( JNO,   0x1900, FMT_II   ),
+    INSTRUCTION_DEF( JOC,   0x1800, FMT_II   ),
+    INSTRUCTION_DEF( JOP,   0x1C00, FMT_II   ),
     INSTRUCTION_DEF_NULL( LDCR,  0x3000,  FMT_IV   ),
     INSTRUCTION_DEF( LI,    0x0200, FMT_VIII ),
     INSTRUCTION_DEF( LWPI,  0x02e0, FMT_XI   ),
