@@ -252,6 +252,11 @@ void cnt_inst()
     printf("\n");
 }
 
+struct hw_val_t {
+    WORD value;
+    WORD bitmask;
+};
+
 static inline WORD shift_word(WORD value, int shift_cnt)
 {
     if (shift_cnt < 0)
@@ -261,6 +266,34 @@ static inline WORD shift_word(WORD value, int shift_cnt)
 
     return value;
 }   
+
+struct hw_val_t to_hardware(WORD soft_address, WORD value, 
+    BYTE size, WORD hard_address)
+{
+    struct hw_val_t hw_value;
+
+    size &= 0x0f;
+    if (size == 0)
+        size = 16;
+
+    hw_value.bitmask = shift_word((1 << size) - 1, soft_address - hard_address);
+    hw_value.value = shift_word(value, soft_address - hard_address) & hw_value.bitmask;
+
+    return hw_value;
+}
+
+WORD to_software(WORD hard_address, WORD value, 
+    BYTE size, WORD soft_address)
+{
+    WORD bitmask;
+
+    size &= 0x0f;
+    if (size == 0)
+        size = 16;
+
+    bitmask = shift_word((1 << size) - 1, soft_address - hard_address);
+    return shift_word(value & bitmask, -(soft_address - hard_address));
+}
 
 //            24
 //        20   |  28   
@@ -276,7 +309,6 @@ int input(int argc, char **argv)
     unsigned int tmp;
     WORD soft_address;
     WORD value;
-    WORD bit_mask;
     int num_bits;
 
     if (argc != 3)
@@ -290,10 +322,9 @@ int input(int argc, char **argv)
     if (1 != sscanf(argv[2], "%d", &num_bits))
         return 0;
 
-    bit_mask = shift_word((1 << num_bits) - 1, 0x28 - soft_address);
-    value = shift_word(((hv1 << 8) | hv2) & bit_mask, -(0x28 - soft_address));
+    value = to_software(0x28, (hv1 << 8) | hv2, num_bits, soft_address);
 
-    printf("value = %04x, mask = %04x\n", value, bit_mask);
+    printf("value = %04x\n", value);
     return 0;
     
 }
@@ -303,9 +334,8 @@ int output(int argc, char **argv)
     unsigned int tmp;
     WORD soft_address;
     WORD value;
-    WORD bit_mask;
-    WORD prev_value;
     int num_bits;
+    struct hw_val_t hw_value;
 
     if (argc != 4)
         return 0;
@@ -323,14 +353,13 @@ int output(int argc, char **argv)
     if (1 != sscanf(argv[3], "%d", &num_bits))
         return 0;
     
-    bit_mask = shift_word((1 << num_bits) - 1, 0x28 - soft_address);
-    prev_value = ((hv1 << 8) | hv2) & ~bit_mask;
-    value = prev_value | (shift_word(value, 0x28 - soft_address) & bit_mask);
-    
+    hw_value = to_hardware(soft_address, value, num_bits, 0x28); 
+
+    value = ((hv1 << 8 | hv2) & ~hw_value.bitmask) | hw_value.value;
     hv1 = value >> 8;
     hv2 = value & 0xf;
 
-    printf("value = %04x, mask = %04x\n", value, bit_mask);
+    printf("value = %04x, mask = %04x\n", hw_value.value, hw_value.bitmask);
     return 0;
 }
 
