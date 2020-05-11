@@ -20,7 +20,7 @@ clean :
 rebuild : clean
 	$(MAKE)
 
-shell : shell.o format.o instruction.o ../lib/libshell.a
+shell : shell.o format.o instruction.o cru.o ../lib/libshell.a
 	$(CC) $(LFLAGS) $^ -lshell -lreadline -o $@
 
 %.o : %.c

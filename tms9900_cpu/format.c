@@ -76,6 +76,9 @@ struct operands_t format_IV(WORD code)
     BYTE rs = code & 0x0f;
 
     ops.cnt = (code >> 6) & 0x0f;
+    if (ops.cnt == 0)
+        ops.cnt = 16;
+
     ops.src = get_address(ts, rs, false);
 
     return ops;

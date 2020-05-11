@@ -6,6 +6,7 @@
 #include "cpu_types.h"
 #include "format.h"
 #include "instruction.h"
+#include "cru.h"
 
 struct instruction_group_t {
     int shift_cnt;
@@ -308,6 +309,16 @@ INSTRUCTION(JOP)
     JUMP(check_flag(FLAG_PAR));
 }
 
+INSTRUCTION(LDCR)
+{
+    WORD value = get_word(ops->src);
+
+    if (ops->cnt <= 8)
+        value >>= 8;
+
+    cru_accessor((get_register_value(12) >> 1), false, value, ops->cnt);
+}
+
 INSTRUCTION(LI)
 {
     put_word(ops->dest, set_result_flags(get_next_word()));
@@ -360,6 +371,16 @@ INSTRUCTION(S)
 INSTRUCTION(SB)
 {
     put_byte(ops->dest, adder_byte(get_byte(ops->dest), -get_byte(ops->src)));
+}
+
+INSTRUCTION(SBO)
+{
+    cru_accessor((get_register_value(12) >> 1) + ops->disp, false, 1, 1);
+}
+
+INSTRUCTION(SBZ)
+{
+    cru_accessor((get_register_value(12) >> 1) + ops->disp, false, 0, 1);
 }
 
 INSTRUCTION(SETO)
@@ -440,6 +461,16 @@ INSTRUCTION(SRL)
     put_word(ops->src, result);
 }
 
+INSTRUCTION(STCR)
+{
+    WORD value = cru_accessor((get_register_value(12) >> 1), true, 0, ops->cnt);
+
+    if (ops->cnt <= 8)
+        put_byte(ops->src, value);
+    else
+        put_word(ops->src, value);
+}
+
 INSTRUCTION(STST)
 {
     put_word(ops->dest, regs.st);
@@ -467,6 +498,10 @@ INSTRUCTION(SZCB)
     put_byte(ops->dest, result);
 }
 
+INSTRUCTION(TB)
+{
+    set_flag(FLAG_EQU, cru_accessor((get_register_value(12) >> 1) + ops->disp, true, 0, 1));
+}
 
 INSTRUCTION(XOR)
 {
@@ -476,9 +511,6 @@ INSTRUCTION(XOR)
 
 #define INSTRUCTION_DEF(mnemonic, code, format) \
     { ET_INSTRUCTION, #mnemonic, code, format, __ ## mnemonic }
-
-#define INSTRUCTION_DEF_NULL(mnemonic, code, format) \
-    { ET_INSTRUCTION, #mnemonic, code, format, NULL }
 
 struct instruction_t instruction[] = {
     INSTRUCTION_DEF( A,     0xa000, FMT_I    ),
@@ -513,7 +545,7 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( JNO,   0x1900, FMT_II   ),
     INSTRUCTION_DEF( JOC,   0x1800, FMT_II   ),
     INSTRUCTION_DEF( JOP,   0x1C00, FMT_II   ),
-    INSTRUCTION_DEF_NULL( LDCR,  0x3000,  FMT_IV   ),
+    INSTRUCTION_DEF( LDCR,  0x3000, FMT_IV   ),
     INSTRUCTION_DEF( LI,    0x0200, FMT_VIII ),
     INSTRUCTION_DEF( LWPI,  0x02e0, FMT_XI   ),
     INSTRUCTION_DEF( MOV,   0xc000, FMT_I    ),
@@ -522,9 +554,10 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( NEG,   0x0500, FMT_VI   ),
     INSTRUCTION_DEF( ORI,   0x0260, FMT_VIII ),
     INSTRUCTION_DEF( RTWP,  0x0380, FMT_VII  ),
-    INSTRUCTION_DEF_NULL( SBO,   0x1d00, FMT_X   ),
     INSTRUCTION_DEF( S,     0x6000, FMT_I    ),
     INSTRUCTION_DEF( SB,    0x7000, FMT_I    ), 
+    INSTRUCTION_DEF( SBO,   0x1d00, FMT_X    ),
+    INSTRUCTION_DEF( SBZ,   0x1e00, FMT_X    ),
     INSTRUCTION_DEF( SETO,  0x0700, FMT_VI   ),
     INSTRUCTION_DEF( SLA,   0x0a00, FMT_V    ),
     INSTRUCTION_DEF( SOC,   0xe000, FMT_I    ),
@@ -532,11 +565,13 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( SRA,   0x0800, FMT_V    ),
     INSTRUCTION_DEF( SRC,   0x0b00, FMT_V    ),
     INSTRUCTION_DEF( SRL,   0x0900, FMT_V    ),
+    INSTRUCTION_DEF( STCR,  0x3800, FMT_IV   ),
     INSTRUCTION_DEF( STST,  0x02c0, FMT_XII  ),
     INSTRUCTION_DEF( STWP,  0x02a0, FMT_XII  ),
     INSTRUCTION_DEF( SZC,   0x4000, FMT_I    ),
     INSTRUCTION_DEF( SZCB,  0x5000, FMT_I    ),
     INSTRUCTION_DEF( SWPB,  0x06c0, FMT_VI   ),
+    INSTRUCTION_DEF( TB,    0x1f00, FMT_X    ),
     INSTRUCTION_DEF( XOR,   0x2800, FMT_III  )
 };
 

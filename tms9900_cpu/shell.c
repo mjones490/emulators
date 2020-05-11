@@ -13,6 +13,7 @@
 #include "cpu_types.h"
 #include "format.h"
 #include "instruction.h"
+#include "cru.h"
 
 struct regs_t regs;
 struct cpu_state_t cpu_state;
@@ -252,49 +253,6 @@ void cnt_inst()
     printf("\n");
 }
 
-struct hw_val_t {
-    WORD value;
-    WORD bitmask;
-};
-
-static inline WORD shift_word(WORD value, int shift_cnt)
-{
-    if (shift_cnt < 0)
-        value >>= -shift_cnt;
-    else if (shift_cnt > 0)
-        value <<= shift_cnt;
-
-    return value;
-}   
-
-struct hw_val_t to_hardware(WORD soft_address, WORD value, 
-    BYTE size, WORD hard_address)
-{
-    struct hw_val_t hw_value;
-
-    size &= 0x0f;
-    if (size == 0)
-        size = 16;
-
-    hw_value.bitmask = shift_word((1 << size) - 1, soft_address - hard_address);
-    hw_value.value = shift_word(value, soft_address - hard_address) & hw_value.bitmask;
-
-    return hw_value;
-}
-
-WORD to_software(WORD hard_address, WORD value, 
-    BYTE size, WORD soft_address)
-{
-    WORD bitmask;
-
-    size &= 0x0f;
-    if (size == 0)
-        size = 16;
-
-    bitmask = shift_word((1 << size) - 1, soft_address - hard_address);
-    return shift_word(value & bitmask, -(soft_address - hard_address));
-}
-
 //            24
 //        20   |  28   
 //         |   |   |
@@ -304,6 +262,43 @@ WORD to_software(WORD hard_address, WORD value,
 //
 
 BYTE hv1, hv2;
+
+cru_accessor_t prev_cru_accessor = NULL;
+cru_accessor_t prev_cru_accessor2 = NULL;
+WORD my_cru_accessor(WORD soft_address, bool read, WORD value, BYTE size)
+{
+    struct hw_val_t hw_value;
+
+    if (!read) {
+        hw_value = to_hardware(soft_address, value, size, 0x28); 
+        hv2 = (hv2 & ~hw_value.bitmask) | hw_value.value;
+    } else {
+        value |= to_software(0x28, hv2, size, soft_address);
+    }
+
+    if (prev_cru_accessor != NULL)
+        value = prev_cru_accessor(soft_address, read, value, size);
+    return value;
+}
+
+WORD my_cru_accessor2(WORD soft_address, bool read, WORD value, BYTE size)
+{
+    struct hw_val_t hw_value;
+    
+    if (!read) {
+        hw_value = to_hardware(soft_address, value, size, 0x20); 
+        hv1 = (hv1 & ~hw_value.bitmask) | hw_value.value;
+    } else {
+        value |= to_software(0x20, hv1, size, soft_address);
+    }
+
+    if (prev_cru_accessor2 != NULL)
+        value = prev_cru_accessor(soft_address, read, value, size);
+
+    return value;
+    return value;
+}
+
 int input(int argc, char **argv)
 {
     unsigned int tmp;
@@ -322,7 +317,7 @@ int input(int argc, char **argv)
     if (1 != sscanf(argv[2], "%d", &num_bits))
         return 0;
 
-    value = to_software(0x28, (hv1 << 8) | hv2, num_bits, soft_address);
+    value = cru_accessor(soft_address, true, 0, num_bits);
 
     printf("value = %04x\n", value);
     return 0;
@@ -335,7 +330,6 @@ int output(int argc, char **argv)
     WORD soft_address;
     WORD value;
     int num_bits;
-    struct hw_val_t hw_value;
 
     if (argc != 4)
         return 0;
@@ -352,20 +346,19 @@ int output(int argc, char **argv)
 
     if (1 != sscanf(argv[3], "%d", &num_bits))
         return 0;
-    
-    hw_value = to_hardware(soft_address, value, num_bits, 0x28); 
 
-    value = ((hv1 << 8 | hv2) & ~hw_value.bitmask) | hw_value.value;
-    hv1 = value >> 8;
-    hv2 = value & 0xf;
+    value = cru_accessor(soft_address, false, value, num_bits);
 
-    printf("value = %04x, mask = %04x\n", hw_value.value, hw_value.bitmask);
+    printf("value = %04x\n", value);
     return 0;
 }
 
 int main(int argc, char **argv)
 {
     cpu_state.bus = my_accessor;
+
+    prev_cru_accessor2 = set_cru_accessor(my_cru_accessor2);
+    prev_cru_accessor = set_cru_accessor(my_cru_accessor);
 
     init_instruction();
     cnt_inst();
