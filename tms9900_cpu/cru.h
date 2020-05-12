@@ -15,5 +15,16 @@ WORD to_software(WORD hard_address, WORD value,
 typedef WORD (*cru_accessor_t)(WORD soft_address, bool read, WORD value, BYTE size);
 WORD cru_accessor(WORD soft_address, bool read, WORD value, BYTE size);
 
-cru_accessor_t set_cru_accessor(cru_accessor_t next_accessor);
+void set_cru_accessor(cru_accessor_t next_accessor);
+
+static inline WORD cru_out(WORD soft_address, WORD value, BYTE size)
+{
+    return cru_accessor(soft_address, false, value, size);
+}
+
+static inline WORD cru_in(WORD soft_address, BYTE size)
+{
+    return cru_accessor(soft_address, true, 0, size);
+}
+
 #endif

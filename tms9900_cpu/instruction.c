@@ -316,7 +316,7 @@ INSTRUCTION(LDCR)
     if (ops->cnt <= 8)
         value >>= 8;
 
-    cru_accessor((get_register_value(12) >> 1), false, value, ops->cnt);
+    cru_out((get_register_value(12) >> 1), value, ops->cnt);
 }
 
 INSTRUCTION(LI)
@@ -375,12 +375,12 @@ INSTRUCTION(SB)
 
 INSTRUCTION(SBO)
 {
-    cru_accessor((get_register_value(12) >> 1) + ops->disp, false, 1, 1);
+    cru_out((get_register_value(12) >> 1) + ops->disp, 1, 1);
 }
 
 INSTRUCTION(SBZ)
 {
-    cru_accessor((get_register_value(12) >> 1) + ops->disp, false, 0, 1);
+    cru_out((get_register_value(12) >> 1) + ops->disp, 0, 1);
 }
 
 INSTRUCTION(SETO)
@@ -463,7 +463,7 @@ INSTRUCTION(SRL)
 
 INSTRUCTION(STCR)
 {
-    WORD value = cru_accessor((get_register_value(12) >> 1), true, 0, ops->cnt);
+    WORD value = cru_in((get_register_value(12) >> 1), ops->cnt);
 
     if (ops->cnt <= 8)
         put_byte(ops->src, value);
@@ -500,7 +500,7 @@ INSTRUCTION(SZCB)
 
 INSTRUCTION(TB)
 {
-    set_flag(FLAG_EQU, cru_accessor((get_register_value(12) >> 1) + ops->disp, true, 0, 1));
+    set_flag(FLAG_EQU, cru_in((get_register_value(12) >> 1) + ops->disp, 1));
 }
 
 INSTRUCTION(XOR)

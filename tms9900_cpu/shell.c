@@ -276,8 +276,6 @@ WORD my_cru_accessor(WORD soft_address, bool read, WORD value, BYTE size)
         value |= to_software(0x28, hv2, size, soft_address);
     }
 
-    if (prev_cru_accessor != NULL)
-        value = prev_cru_accessor(soft_address, read, value, size);
     return value;
 }
 
@@ -292,10 +290,6 @@ WORD my_cru_accessor2(WORD soft_address, bool read, WORD value, BYTE size)
         value |= to_software(0x20, hv1, size, soft_address);
     }
 
-    if (prev_cru_accessor2 != NULL)
-        value = prev_cru_accessor(soft_address, read, value, size);
-
-    return value;
     return value;
 }
 
@@ -317,7 +311,7 @@ int input(int argc, char **argv)
     if (1 != sscanf(argv[2], "%d", &num_bits))
         return 0;
 
-    value = cru_accessor(soft_address, true, 0, num_bits);
+    value = cru_in(soft_address, num_bits);
 
     printf("value = %04x\n", value);
     return 0;
@@ -347,7 +341,7 @@ int output(int argc, char **argv)
     if (1 != sscanf(argv[3], "%d", &num_bits))
         return 0;
 
-    value = cru_accessor(soft_address, false, value, num_bits);
+    value = cru_out(soft_address, value, num_bits);
 
     printf("value = %04x\n", value);
     return 0;
@@ -357,8 +351,8 @@ int main(int argc, char **argv)
 {
     cpu_state.bus = my_accessor;
 
-    prev_cru_accessor2 = set_cru_accessor(my_cru_accessor2);
-    prev_cru_accessor = set_cru_accessor(my_cru_accessor);
+    set_cru_accessor(my_cru_accessor2);
+    set_cru_accessor(my_cru_accessor);
 
     init_instruction();
     cnt_inst();

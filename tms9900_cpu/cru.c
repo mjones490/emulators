@@ -40,19 +40,29 @@ WORD to_software(WORD hard_address, WORD value,
     return shift_word(value & bitmask, -(soft_address - hard_address));
 }
 
-cru_accessor_t first_accessor = NULL;
+struct accessor_t {
+    cru_accessor_t handler;
+    struct accessor_t *next;
+};
 
-cru_accessor_t set_cru_accessor(cru_accessor_t next_accessor)
+static struct accessor_t *first;
+
+void set_cru_accessor(cru_accessor_t handler)
 {
-    cru_accessor_t last_accessor = first_accessor;
-    first_accessor = next_accessor;
-    return last_accessor;
+    struct accessor_t *next = malloc(sizeof(struct accessor_t));
+    next->next = first;
+    next->handler = handler;
+    first = next;
 }
 
 WORD cru_accessor(WORD soft_address, bool read, WORD value, BYTE size)
 {
-    if (first_accessor != NULL)
-        value = first_accessor(soft_address, read, value, size);
+    struct accessor_t *next = first;
+    while (next) {
+        value = next->handler(soft_address, read, value, size);
+        next = next->next;
+    }
+
     return value;
 }
 
