@@ -8,6 +8,8 @@
 #include "instruction.h"
 #include "cru.h"
 
+void execute(WORD op);
+
 struct instruction_group_t {
     int shift_cnt;
     WORD mask;
@@ -39,7 +41,7 @@ static struct {
     { GRP_3, format_VI      }, // FMT_VI
     { GRP_4, NULL           }, // FMT_VII
     { GRP_4, format_VIII    }, // FMT_VIII
-    { GRP_1, format_III     }, // FMT_IX (Not implemented yet)
+    { GRP_1, format_IX      }, // FMT_IX
     { GRP_2, format_II      }, // FMT_X
     { GRP_4, NULL           }, // FMT_XI
     { GRP_4, format_VIII    }, // FMT_XII
@@ -503,6 +505,27 @@ INSTRUCTION(TB)
     set_flag(FLAG_EQU, cru_in((get_register_value(12) >> 1) + ops->disp, 1));
 }
 
+INSTRUCTION(X)
+{
+    WORD op = get_word(ops->src);
+    execute(op);
+}
+
+INSTRUCTION(XOP)
+{
+    WORD vector = (ops->vector << 2) + 0x0040;
+    WORD wp = regs.wp;
+    regs.wp = get_word(vector);
+    
+    set_register_value(11, ops->src);
+    set_register_value(13, wp);
+    set_register_value(14, regs.pc);
+    set_register_value(15, regs.st);
+    
+    regs.pc = get_word(vector + 2);
+    set_flag(FLAG_XOP, true);
+}
+
 INSTRUCTION(XOR)
 {
     WORD value = get_word(ops->dest);
@@ -528,7 +551,7 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( CZC,   0x2400, FMT_III  ),
     INSTRUCTION_DEF( DEC,   0x0600, FMT_VI   ),
     INSTRUCTION_DEF( DECT,  0x0640, FMT_VI   ),
-    INSTRUCTION_DEF( DIV,   0x3c00, FMT_IX  ),
+    INSTRUCTION_DEF( DIV,   0x3c00, FMT_III  ),
     INSTRUCTION_DEF( INC,   0x0580, FMT_VI   ),
     INSTRUCTION_DEF( INCT,  0x05c0, FMT_VI   ),
     INSTRUCTION_DEF( INV,   0x0540, FMT_VI   ),
@@ -550,7 +573,7 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( LWPI,  0x02e0, FMT_XI   ),
     INSTRUCTION_DEF( MOV,   0xc000, FMT_I    ),
     INSTRUCTION_DEF( MOVB,  0xd000, FMT_I    ),
-    INSTRUCTION_DEF( MPY,   0x3800, FMT_IX   ),
+    INSTRUCTION_DEF( MPY,   0x3800, FMT_III  ),
     INSTRUCTION_DEF( NEG,   0x0500, FMT_VI   ),
     INSTRUCTION_DEF( ORI,   0x0260, FMT_VIII ),
     INSTRUCTION_DEF( RTWP,  0x0380, FMT_VII  ),
@@ -565,13 +588,15 @@ struct instruction_t instruction[] = {
     INSTRUCTION_DEF( SRA,   0x0800, FMT_V    ),
     INSTRUCTION_DEF( SRC,   0x0b00, FMT_V    ),
     INSTRUCTION_DEF( SRL,   0x0900, FMT_V    ),
-    INSTRUCTION_DEF( STCR,  0x3800, FMT_IV   ),
+    INSTRUCTION_DEF( STCR,  0x3400, FMT_IV   ),
     INSTRUCTION_DEF( STST,  0x02c0, FMT_XII  ),
     INSTRUCTION_DEF( STWP,  0x02a0, FMT_XII  ),
+    INSTRUCTION_DEF( SWPB,  0x06c0, FMT_VI   ),
     INSTRUCTION_DEF( SZC,   0x4000, FMT_I    ),
     INSTRUCTION_DEF( SZCB,  0x5000, FMT_I    ),
-    INSTRUCTION_DEF( SWPB,  0x06c0, FMT_VI   ),
     INSTRUCTION_DEF( TB,    0x1f00, FMT_X    ),
+    INSTRUCTION_DEF( X,     0x0480, FMT_VI   ),
+    INSTRUCTION_DEF( XOP,   0x2c00, FMT_IX   ),
     INSTRUCTION_DEF( XOR,   0x2800, FMT_III  )
 };
 
@@ -650,9 +675,8 @@ struct instruction_t *decode_instruction(WORD code)
     }
 }
 
-void execute_instruction()
+void execute(WORD op)
 {
-    WORD op = get_next_word();
     struct instruction_t *instruction = decode_instruction(op);
     struct operands_t operands;
 
@@ -661,6 +685,12 @@ void execute_instruction()
             operands = format[instruction->format].handler(op);
         instruction->handler(&operands);
     }    
+}
+
+void execute_instruction()
+{
+    WORD op = get_next_word();
+    execute(op);
 }
 
 static void free_group(int group, struct instruction_list_t *branch)

@@ -101,7 +101,6 @@ WORD disassemble_instruction(WORD address)
             break;
 
         case FMT_III:
-        case FMT_IX:
             i = display_format(operands, (code >> 4) & 0x03, code & 0x0f);
             sprintf(operands + i, ",%s", ws_reg_name[(code >> 6) & 0x0f]);
             break;
@@ -121,6 +120,11 @@ WORD disassemble_instruction(WORD address)
         
         case FMT_VIII:
             sprintf(operands, "%s,>%04x", ws_reg_name[code & 0x0f], get_next_word());
+            break;
+
+        case FMT_IX:
+            i = display_format(operands, (code >> 4) & 0x03, code & 0x0f);
+            sprintf(operands + i, ",>%x", (code >> 6) & 0x0f);
             break;
 
         case FMT_X:

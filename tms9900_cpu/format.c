@@ -127,19 +127,18 @@ struct operands_t format_VIII(WORD code)
 
     return ops;
 }
-/*
+
 struct operands_t format_IX(WORD code)
 {
     struct operands_t ops;
     memset(&ops, 0, sizeof(ops));
 
-    BYTE rd = (code >> 6) & 0x0f;
     BYTE ts = (code >> 4) & 0x03;
     BYTE rs = code & 0x0f;
 
-    ops.dest = get_register_address(rd);
+    ops.vector = (code >> 6) & 0x0f;
     ops.src = get_address(ts, rs, false);
 
     return ops;
 }
-*/
+
