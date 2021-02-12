@@ -44,10 +44,13 @@ static WORD pack_bcd(WORD value)
 {
     if (lo(value) > 0x09)
         value += 0x0006;
-    if (hi(value) > 0x09)
-        value += 0x0600;
+    
+    value =  (((value & 0xff00) >> 4) + (value & 0x00ff));
+    
+    if ((value & 0x00f0) > 0x0090)
+        value += 0x0060;
 
-    return (((value & 0xff00) >> 4) + (value & 0x00ff));
+    return value;
 }
 
 static inline void add()

@@ -1,5 +1,5 @@
 LIB := shell
-LIB_OBJS := shell command basic_commands  
+LIB_OBJS := shell command basic_commands extended_commands 
 
 EXE := shell
 EXE_OBJS := simple_shell
