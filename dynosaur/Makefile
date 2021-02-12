@@ -46,3 +46,5 @@ clean:
 rebuild : clean 
 	$(MAKE)
 
+everything:
+	$(MAKE) -C .. rebuild
