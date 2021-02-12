@@ -14,7 +14,7 @@ build_libs :
 	$(MAKE) -C ../shell
 
 clean :
-	rm -vf shell *.o *.d *.a 
+	rm -vf shell *.o *.d *.a *.so 
 	$(MAKE) -C ../shell clean
 
 rebuild : clean
