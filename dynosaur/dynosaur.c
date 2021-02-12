@@ -70,27 +70,31 @@ static BYTE execute_instruction()
     return clocks;
 }
 
-static int timer_interrupt_cnt = 0;
-static int timer_speed = 0;
+static WORD timer_interrupt_cnt = 0;
+static WORD timer_speed = 0;
 
 BYTE timer_port(BYTE port, bool read, BYTE value)
 {
     if (!read) {
-        timer_speed = (int) value * 16;
+        if (port == 0x08)
+            timer_speed = (timer_speed & 0xff00) + value;
+        else
+            timer_speed =  value << 8 + (timer_speed & 0x00ff);
+        printf("Timer speed is %04x\n", timer_speed);
         timer_interrupt_cnt = 0;
     }
 
     return value;
 }
 
-void timer_interrupt(Uint32 timer)
+void timer_interrupt(Uint32 clocks)
 {
-    if (timer_speed == 0)
+    if (timer_speed == 0 || cpu->interrupt == NULL)
         return;
 
-    timer_interrupt_cnt += (timer);
+    timer_interrupt_cnt += (clocks);
     if (timer_interrupt_cnt >= timer_speed) {
-        timer_interrupt_cnt -= timer_speed;
+        timer_interrupt_cnt = 0;
         cpu->interrupt(7);
     }
 }
@@ -100,16 +104,20 @@ static void cycle()
     static int bucket = 0;
     Uint32 current_timer= SDL_GetTicks();
     static Uint32 timer;
+    int clocks = 0;
     if (timer == 0)
         timer = current_timer;
 
-    if (bucket > 0)
-        bucket -= execute_instruction();
+    
+    if (bucket > 0) {
+        clocks = execute_instruction();
+        bucket -= clocks;
+        if (!cpu->get_halted()) 
+            timer_interrupt(clocks);
+    }
     
     if (current_timer > timer) {
         bucket += (current_timer - timer) * dyn_config.clock_speed;
-        if (!cpu->get_halted()) 
-            timer_interrupt(current_timer - timer);
         timer = current_timer;
     }
 
@@ -149,8 +157,8 @@ void load_config(char *config_name)
 
     dyn_config.ram_size = get_config_hex("DYNOSAUR", "RAM_SIZE");
     if (dyn_config.ram_size == 0) {
-        LOG_WRN("RAM size not specified.  Assuming 0x80.\n");
-        dyn_config.ram_size = 0x80;
+        LOG_WRN("RAM size not specified.  Assuming 0x100.\n");
+        dyn_config.ram_size = 0x100;
     }
 
     dyn_config.clock_speed = get_config_int(dyn_config.cpu_config, "CLOCK_SPEED");
@@ -196,6 +204,7 @@ static void init(char *config_name)
     shell_set_loop_cb(cycle);
 
     attach_port(timer_port, 0x08);
+    attach_port(timer_port, 0x09);
 }
 
 static void finalize()

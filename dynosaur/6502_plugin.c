@@ -31,12 +31,34 @@ struct cpu_interface interface;
 accessor_t dynamic_accessor;
 port_accessor_t dynamic_port_accessor;
 
+#define TIMER_LOW       0x6004
+#define TIMER_HIGH      0x6005
+
+static BYTE timer_low = 0;
+static BYTE timer_high = 0;
 static BYTE real_accessor(WORD address, bool read, BYTE value) 
 {
-    if (hi(address) == 0xc0)
-        value = dynamic_port_accessor(lo(address), read, value);
-    else
-        value = dynamic_accessor(address, read, value);
+    switch (address) {
+        case 0x6001:
+            value = dynamic_port_accessor(0x18, read, value);
+            break;
+
+        case TIMER_LOW:
+            if (read)
+                cpu_clear_signal(SIG_IRQ);
+            else 
+                timer_low = value;
+            break;
+
+        case TIMER_HIGH:
+            timer_high = value;
+            dynamic_port_accessor(0x08, read, timer_low);
+            dynamic_port_accessor(0x09, read, timer_high);
+            break;
+
+        default:
+            value = dynamic_accessor(address, read, value);
+    }
     
     return value;
 }
@@ -55,6 +77,11 @@ void finalize()
     printf("\n");
 }
 
+void cpu_interrupt(BYTE vector)
+{
+    cpu_set_signal(SIG_IRQ);
+}
+
 struct cpu_interface *get_cpu_interface()
 {
     interface.initialize = initialize;
@@ -69,6 +96,6 @@ struct cpu_interface *get_cpu_interface()
     interface.get_PC = cpu_get_reg_PC;
     interface.shell_commands = NULL; //shell_commands;
     interface.num_shell_commands = 0; //SHELL_COMMANDS_CNT(shell_commands);
-
+    interface.interrupt = cpu_interrupt;
     return &interface;
 }

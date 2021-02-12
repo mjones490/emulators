@@ -29,9 +29,10 @@ BYTE bus_accessor(WORD address, bool read, BYTE value)
     return 0;
 }
 
-void attach_bus(accessor_t accessor, BYTE start_page, BYTE num_pages)
+void attach_bus(accessor_t accessor, BYTE start_page, int num_pages)
 {
     WORD i;
+    LOG_DBG("Attaching %d pages to bus at %02x.\n", num_pages, start_page);
     for (i = 0; i < num_pages; i++) {
         if ((i + start_page) > 255)
             break;
@@ -55,9 +56,13 @@ void attach_port(port_accessor_t accessor, BYTE port_no)
 
 void init_bus()
 {
+    if (dyn_config.ram_size == 0)
+        dyn_config.ram_size = 256;
     LOG_INF("Inititializing bus.\n");
+    LOG_INF("Allocating %d bytes of RAM.\n", 256 * dyn_config.ram_size);
     ram = malloc(256 * dyn_config.ram_size);
-    memset(bus, 0, sizeof(accessor_t) * 256);
+    memset(ram, 0xff, 256 * dyn_config.ram_size);
+    memset(bus, 0x00, sizeof(accessor_t) * 256);
     memset(port, 0, sizeof(port_accessor_t) * 256);
     attach_bus(ram_accessor, 0, dyn_config.ram_size);
 }

@@ -12,6 +12,7 @@ struct {
     SDL_Renderer    *renderer;
     SDL_Texture     *texture;
     Uint16          *pixels;
+    Uint16          location;
     struct {
         BYTE        screen[24][40];  // 8000
         BYTE        color_table[16]; // 83c0
@@ -77,9 +78,9 @@ void refresh_video()
 BYTE vdp_ram_accessor(WORD address, bool read, BYTE value)
 {
     if (read)
-        value = *((BYTE *) &video.vdp_ram + (address - 0x8000));
+        value = *((BYTE *) &video.vdp_ram + (address - video.location));
     else
-        *((BYTE *) &video.vdp_ram + (address - 0x8000)) = value;
+        *((BYTE *) &video.vdp_ram + (address - video.location)) = value;
 
     return value;
 }
@@ -141,6 +142,13 @@ static void load_config()
         video.title = "";
     }
     LOG_INF("Title = \"%s\".\n", video.title);
+
+    video.location = get_config_hex("VIDEO", "LOCATION");
+    if (0 == video.location) {
+        LOG_WRN("Video RAM location not found. Setting to default.\n");
+        video.location = 0x8000;
+    }
+    LOG_INF("Video RAM located at 0x%04x.\n", video.location);
     load_tables();
 }
 
@@ -184,7 +192,7 @@ void init_video(bool full_init)
     }
 
     memset(video.vdp_ram.color_table, 0x17, 32);
-    attach_bus(vdp_ram_accessor, 0x80, sizeof(video.vdp_ram) / 256);
+    attach_bus(vdp_ram_accessor, hi(video.location), sizeof(video.vdp_ram) / 256);
     refresh_video();
 }
 
