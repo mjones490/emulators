@@ -79,7 +79,7 @@ BYTE timer_port(BYTE port, bool read, BYTE value)
         if (port == 0x08)
             timer_speed = (timer_speed & 0xff00) + value;
         else
-            timer_speed =  value << 8 + (timer_speed & 0x00ff);
+            timer_speed =  (WORD) (value << 8) + (timer_speed & 0x00ff);
         printf("Timer speed is %04x\n", timer_speed);
         timer_interrupt_cnt = 0;
     }
