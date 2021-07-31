@@ -225,13 +225,16 @@ INSTRUCTION(SBI)
 
 INSTRUCTION(INR)
 {
+    bool c = are_set(FLAG_C) == FLAG_C ;
     put_dest(adder(get_dest(), 1));
+    toggle_flags(FLAG_C, c);
 }
 
 INSTRUCTION(DCR)
 {
+    bool c = are_set(FLAG_C) == FLAG_C ;
     put_dest(adder(get_dest(), -1));
-    toggle_flags(FLAG_C, !are_set(FLAG_C));
+    toggle_flags(FLAG_C, c);
 }
 
 INSTRUCTION(INX)
