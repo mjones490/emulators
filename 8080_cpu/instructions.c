@@ -200,27 +200,43 @@ INSTRUCTION(ACI)
 }
 
 INSTRUCTION(SUB)
-{
-    regs.b.A = adder(regs.b.A, -get_source());
-    toggle_flags(FLAG_C, !are_set(FLAG_C));
+{ 
+    BYTE val = get_source();
+    if (val != 0) {
+        regs.b.A = adder(regs.b.A, -val);
+        toggle_flags(FLAG_C, !are_set(FLAG_C));
+    } else
+        toggle_flags(FLAG_C, false);
 }
 
 INSTRUCTION(SUI)
 {
-    regs.b.A = adder(regs.b.A, -get_next_byte());
-    toggle_flags(FLAG_C, !are_set(FLAG_C));
+    BYTE val = get_next_byte();
+    if (val != 0) {
+        regs.b.A = adder(regs.b.A, -val);
+        toggle_flags(FLAG_C, !are_set(FLAG_C));
+    } else
+        toggle_flags(FLAG_C, false);
 }
 
 INSTRUCTION(SBB)
 {
-    regs.b.A = adder(regs.b.A, -(get_source() + are_set(FLAG_C)));
-    toggle_flags(FLAG_C, !are_set(FLAG_C));
+    BYTE val = get_source() + are_set(FLAG_C);
+    if (val != 0) {
+        regs.b.A = adder(regs.b.A, -val);
+        toggle_flags(FLAG_C, !are_set(FLAG_C));
+    } else
+        toggle_flags(FLAG_C, false);
 }
 
 INSTRUCTION(SBI)
 {
-    regs.b.A = adder(regs.b.A, -(get_next_byte() + are_set(FLAG_C)));
-    toggle_flags(FLAG_C, !are_set(FLAG_C));
+    BYTE val = get_next_byte() + are_set(FLAG_C);
+    if (val != 0) {
+        regs.b.A = adder(regs.b.A, -val);
+        toggle_flags(FLAG_C, !are_set(FLAG_C));
+    } else
+        toggle_flags(FLAG_C, false);
 }
 
 INSTRUCTION(INR)
