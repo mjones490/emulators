@@ -4,6 +4,8 @@
 #include "logging.h" 
 #include "dynosaur.h"
 
+static bool int_state = false;
+
 BYTE key_set[3];
 BYTE keyboard_port(BYTE port, bool read, BYTE value)
 {
@@ -19,7 +21,11 @@ BYTE key_stat = 0;
 
 BYTE key_stat_port(BYTE port, bool read, BYTE value)
 {
-    return key_stat;
+    if (read)
+        return key_stat;
+    else
+        int_state = (value & 0x02) == 0x02;
+    return 0;
 }
 
 void check_keyboard()
@@ -37,10 +43,11 @@ void check_keyboard()
                 key_set[2] = e.key.keysym.sym & 0xff;
             else
                 key_set[1] = e.key.keysym.sym & 0xff;
+            cpu->interrupt(0x06);
         } else if (e.type == SDL_KEYUP) {
             key_stat &= 0xfe;
+            cpu->interrupt(0x06);
         }
-
     }
 }
 
