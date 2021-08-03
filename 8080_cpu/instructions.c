@@ -202,40 +202,40 @@ INSTRUCTION(ACI)
 INSTRUCTION(SUB)
 { 
     BYTE val = get_source();
-    if (val != 0) {
-        regs.b.A = adder(regs.b.A, -val);
+    regs.b.A = adder(regs.b.A, -val);
+    if (val != 0)
         toggle_flags(FLAG_C, !are_set(FLAG_C));
-    } else
+    else
         toggle_flags(FLAG_C, false);
 }
 
 INSTRUCTION(SUI)
 {
     BYTE val = get_next_byte();
-    if (val != 0) {
-        regs.b.A = adder(regs.b.A, -val);
+    regs.b.A = adder(regs.b.A, -val);
+    if (val != 0) 
         toggle_flags(FLAG_C, !are_set(FLAG_C));
-    } else
+    else
         toggle_flags(FLAG_C, false);
 }
 
 INSTRUCTION(SBB)
 {
     BYTE val = get_source() + are_set(FLAG_C);
-    if (val != 0) {
-        regs.b.A = adder(regs.b.A, -val);
+    regs.b.A = adder(regs.b.A, -val);
+    if (val != 0) 
         toggle_flags(FLAG_C, !are_set(FLAG_C));
-    } else
+    else
         toggle_flags(FLAG_C, false);
 }
 
 INSTRUCTION(SBI)
 {
     BYTE val = get_next_byte() + are_set(FLAG_C);
-    if (val != 0) {
-        regs.b.A = adder(regs.b.A, -val);
+    regs.b.A = adder(regs.b.A, -val);
+    if (val != 0) 
         toggle_flags(FLAG_C, !are_set(FLAG_C));
-    } else
+    else
         toggle_flags(FLAG_C, false);
 }
 
