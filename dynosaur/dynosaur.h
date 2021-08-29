@@ -17,10 +17,15 @@ struct config_t {
 extern struct cpu_interface *cpu;
 extern struct config_t dyn_config;
 extern WORD breakpoint;
+extern WORD nextpoint;
 
 static inline BYTE put_byte(WORD address, BYTE value)
 {
     return bus_accessor(address, false, value);
 }
 
+static inline BYTE get_byte(WORD address)
+{
+    return bus_accessor(address, true, 0);
+}
 #endif

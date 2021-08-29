@@ -80,6 +80,14 @@ static int step(int argc, char **argv)
     return 0;
 }
 
+static int next(int argc, char **argv)
+{
+    BYTE code = get_byte(cpu->get_PC());
+    nextpoint = cpu->get_PC() + cpu->get_instruction_size(code);
+    cpu->set_halted(false);
+    return 0;
+}
+
 static int go(int argc, char **argv)
 {
     int matched;
@@ -195,5 +203,6 @@ void shell_load_dynosaur_commands()
     shell_add_command("breakpoint", "View/Set breakpoint", set_breakpoint, false);
     shell_add_command("load", "Load a binary image file into RAM", load, false);
     shell_add_command("out", "Write value to port", out_port, false);
+    shell_add_command("next", "Step, preceding through subroutine calls.", next, true);
 }
-    
+

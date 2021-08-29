@@ -20,6 +20,7 @@
 struct config_t dyn_config;
 struct cpu_interface *cpu;
 WORD breakpoint = 0;
+WORD nextpoint = 0;
 
 static void *plugin;
 
@@ -58,11 +59,19 @@ void unload_plugin(void *handle)
 static BYTE execute_instruction()
 {
     BYTE clocks;
+    bool halt = false;
     if (!cpu->get_halted()) {
         clocks = cpu->execute_instruction();
         if (cpu->get_PC() == breakpoint) {
             printf("Breakpoint reached.\n");
+            halt = true;
+        } else if (cpu->get_PC() == nextpoint) {
+            halt = true;
+        }
+
+        if (halt) {
             cpu->show_registers();
+            cpu->disassemble(cpu->get_PC());
             cpu->set_halted(true);
         }
     }

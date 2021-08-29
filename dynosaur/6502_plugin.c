@@ -99,6 +99,7 @@ struct cpu_interface *get_cpu_interface()
     interface.show_registers = show_registers;
     interface.set_register = set_register;
     interface.disassemble = disassemble;
+    interface.get_instruction_size = cpu_get_instruction_size;
     interface.set_halted = set_halted;
     interface.get_halted = get_halted;
     interface.set_PC = cpu_set_reg_PC;

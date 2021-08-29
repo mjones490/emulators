@@ -18,6 +18,7 @@ struct cpu_interface {
     void (*show_registers)();
     void (*set_register)(char *, WORD);
     WORD (*disassemble)(WORD);
+    int  (*get_instruction_size)(BYTE);
     void (*set_halted)(bool);
     bool (*get_halted)();
     void (*set_PC)(WORD);
