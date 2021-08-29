@@ -81,6 +81,7 @@ static BYTE execute_instruction()
 
 static WORD timer_interrupt_cnt = 0;
 static WORD timer_speed = 0;
+static bool use_cpu_clock = false;
 
 BYTE timer_port(BYTE port, bool read, BYTE value)
 {
@@ -103,7 +104,10 @@ void timer_interrupt(Uint32 clocks)
 
     timer_interrupt_cnt += (clocks);
     if (timer_interrupt_cnt >= timer_speed) {
-        timer_interrupt_cnt = 0;
+        if (use_cpu_clock)
+            timer_interrupt_cnt = 0;
+        else
+            timer_interrupt_cnt -= timer_speed;
         cpu->interrupt(7);
     }
 }
@@ -121,12 +125,14 @@ static void cycle()
     if (bucket > 0) {
         clocks = execute_instruction();
         bucket -= clocks;
-        if (!cpu->get_halted()) 
+        if (!cpu->get_halted() && use_cpu_clock) 
             timer_interrupt(clocks);
     }
     
     if (current_timer > timer) {
         bucket += (current_timer - timer) * dyn_config.clock_speed;
+        if (!cpu->get_halted() && !use_cpu_clock) 
+            timer_interrupt(current_timer - timer);
         timer = current_timer;
     }
 
@@ -180,6 +186,15 @@ void load_config(char *config_name)
     dyn_config.bin_dir = get_config_string(dyn_config.cpu_config, "DIRECTORY");
     if (dyn_config.bin_dir == NULL)
         LOG_WRN("Binary directory not specified.  Will use current directory.\n");
+
+    temp = get_config_string("DYNOSAUR", "TIMER_TYPE");
+    if (temp != NULL && strncmp("CPU", temp, 3) == 0) {
+        use_cpu_clock = true;
+        LOG_INF("Using CPU clocks.\n");
+    } else {
+        use_cpu_clock = false;
+        LOG_INF("Using wall time.\n");
+    }
 }
 
 static int system_reset(int arc, char **argv);
