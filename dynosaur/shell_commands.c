@@ -82,6 +82,14 @@ static int step(int argc, char **argv)
 
 static int next(int argc, char **argv)
 {
+    int matched;
+    WORD new_pc;
+    if (1 < argc) {
+        matched = sscanf(argv[1], "%4x", &new_pc);
+        if (matched)
+            cpu->set_PC(new_pc);
+    }
+
     BYTE code = get_byte(cpu->get_PC());
     nextpoint = cpu->get_PC() + cpu->get_instruction_size(code);
     cpu->set_halted(false);
