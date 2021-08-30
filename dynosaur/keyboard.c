@@ -43,10 +43,12 @@ void check_keyboard()
                 key_set[2] = e.key.keysym.sym & 0xff;
             else
                 key_set[1] = e.key.keysym.sym & 0xff;
-            cpu->interrupt(0x06);
+            if (int_state)
+                cpu->interrupt(0x06);
         } else if (e.type == SDL_KEYUP) {
             key_stat &= 0xfe;
-            cpu->interrupt(0x06);
+            if (int_state)
+                cpu->interrupt(0x06);
         }
     }
 }
