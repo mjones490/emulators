@@ -1,12 +1,16 @@
-LIB := 6502
-LIB_OBJS := 6502_cpu control init instructions modes
+LIB_6502 := 6502
+LIB_65C02 := 65c02
+LIB_6502_OBJS := 6502_cpu control init instructions 6502_instructions modes 
+LIB_65C02_OBJS := 6502_cpu control init instructions 65c02_instructions modes 
 
-SHELL_LIB = 6502_shell
-SHELL_LIB_OBJS = 6502_shell_commands
+SHELL_6502_LIB = 6502_shell
+SHELL_6502_LIB_OBJS = 6502_shell_commands
+SHELL_65C02_LIB = 65c02_shell
 
-SHELL_EXE := shell
+SHELL_6502_EXE := shell_6502
+SHELL_65C02_EXE := shell_65c02
 SHELL_EXE_OBJS := shell 6502_shell_commands
-SHELL_EXE_LIBS := 6502 shell readline
+SHELL_EXE_LIBS :=  readline
 
 TERM_EXE := term
 
@@ -19,13 +23,16 @@ LFLAGS = -Wall -L$(LIB_DIR)
 CP = cp -v
 
 SHELL_EXE_OBJS := $(SHELL_EXE_OBJS:%=%.o)
-LIB := $(LIB:%=lib%.a)
-LIB_OBJS := $(LIB_OBJS:%=%.o)
-SHELL_LIB := $(SHELL_LIB:%=lib%.a)
-SHELL_LIB_OBJS := $(SHELL_LIB_OBJS:%=%.o)
+LIB_6502 := $(LIB_6502:%=lib%.a)
+LIB_65C02 := $(LIB_65C02:%=lib%.a)
+LIB_6502_OBJS := $(LIB_6502_OBJS:%=%.o)
+LIB_65C02_OBJS := $(LIB_65C02_OBJS:%=%.o)
+SHELL_6502_LIB := $(SHELL_6502_LIB:%=lib%.a)
+SHELL_65C02_LIB := $(SHELL_65C02_LIB:%=lib%.a)
+SHELL_6502_LIB_OBJS := $(SHELL_6502_LIB_OBJS:%=%.o)
 SHELL_EXE_LIBS := $(SHELL_EXE_LIBS:%=-l%)
 
-all : build_libs $(LIB) $(SHELL_LIB) $(SHELL_EXE) $(TERM_EXE)
+all : build_libs $(LIB_6502) $(LIB_65C02) $(SHELL_6502_LIB) $(SHELL_65C02_LIB) $(SHELL_6502_EXE) $(SHELL_65C02_EXE) $(TERM_EXE)
 
 build_libs :
 	cd ../shell && $(MAKE)
@@ -33,26 +40,39 @@ build_libs :
 .SECONDARY :
  
 clean :
-	rm -vf $(SHELL_EXE_OBJS) $(LIB_OBJS) $(SHELL_EXE) $(LIB) $(TERM_EXE) *.d
-	rm -vf $(SHELL_LIB_OBJS) $(SHELL_LIB)
+	rm -vf $(SHELL_EXE_OBJS) $(LIB_6502_OBJS) $(SHELL_EXE) $(LIB_6502) $(TERM_EXE) *.d
+	rm -vf $(SHELL__6502_LIB_OBJS) $(SHELL_6502_LIB) $(SHELL_65C02_LIB) $(LIB_65C02) $(LIB_65C02_OBJS)
 	cd ../shell && $(MAKE) clean
 
 rebuild : clean
 	$(MAKE)
 
-$(SHELL_EXE) : $(SHELL_EXE_OBJS) $(LIB) ../lib/libshell.a
-	$(CC) $(LFLAGS) $(SHELL_EXE_OBJS) $(SHELL_EXE_LIBS) -o $(SHELL_EXE)
+$(SHELL_6502_EXE) : $(SHELL_EXE_OBJS) $(SHELL_EXE_LIBS) ../lib/libshell.a lib6502.a 
+	$(CC) $(LFLAGS) $(SHELL_EXE_OBJS) -l6502 -lshell $(SHELL_EXE_LIBS) -o $(SHELL_6502_EXE)
+
+$(SHELL_65C02_EXE) : $(SHELL_EXE_OBJS) $(SHELL_EXE_LIBS) ../lib/libshell.a lib65c02.a 
+	$(CC) $(LFLAGS) $(SHELL_EXE_OBJS) -l65c02 -lshell $(SHELL_EXE_LIBS) -o $(SHELL_65C02_EXE)
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(LIB) : $(LIB_OBJS)
-	$(AR) crv $(LIB) $(LIB_OBJS)
+
+
+$(LIB_6502) : $(LIB_6502_OBJS)
+	$(AR) crv $(LIB_6502) $(LIB_6502_OBJS)
 	mkdir -pv $(LIB_DIR)
-	$(CP) -v $(LIB) $(LIB_DIR)
+	$(CP) -v $(LIB_6502) $(LIB_DIR)
+
+$(LIB_65C02) : $(LIB_65C02_OBJS)
+	$(AR) crv $(LIB_65C02) $(LIB_65C02_OBJS)
+	mkdir -pv $(LIB_DIR)
+	$(CP) -v $(LIB_65C02) $(LIB_DIR)
 
 
-$(SHELL_LIB) : $(SHELL_LIB_OBJS)
-	$(AR) crv $(SHELL_LIB) $(SHELL_LIB_OBJS)
-	$(CP) -v $(SHELL_LIB) $(LIB_DIR)
+$(SHELL_6502_LIB) : $(SHELL_6502_LIB_OBJS)
+	$(AR) crv $(SHELL_6502_LIB) $(SHELL_6502_LIB_OBJS)
+	$(CP) -v $(SHELL_6502_LIB) $(LIB_DIR)
 
+$(SHELL_65C02_LIB) : $(SHELL_6502_LIB_OBJS)
+	$(AR) crv $(SHELL_65C02_LIB) $(SHELL_6502_LIB_OBJS)
+	$(CP) -v $(SHELL_65C02_LIB) $(LIB_DIR)
