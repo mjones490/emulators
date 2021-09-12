@@ -42,6 +42,7 @@ build_libs :
 clean :
 	rm -vf $(SHELL_EXE_OBJS) $(LIB_6502_OBJS) $(SHELL_EXE) $(LIB_6502) $(TERM_EXE) *.d
 	rm -vf $(SHELL__6502_LIB_OBJS) $(SHELL_6502_LIB) $(SHELL_65C02_LIB) $(LIB_65C02) $(LIB_65C02_OBJS)
+	rm -vf shell_6502 shell_65c02
 	cd ../shell && $(MAKE) clean
 
 rebuild : clean
