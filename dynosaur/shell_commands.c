@@ -211,6 +211,6 @@ void shell_load_dynosaur_commands()
     shell_add_command("breakpoint", "View/Set breakpoint", set_breakpoint, false);
     shell_add_command("load", "Load a binary image file into RAM", load, false);
     shell_add_command("out", "Write value to port", out_port, false);
-    shell_add_command("next", "Step, preceding through subroutine calls.", next, true);
+    shell_add_command("next", "Step, preceding through subroutine calls.", next, false);
 }
 

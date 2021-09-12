@@ -1,4 +1,4 @@
-all : dynosaur lib8080.so lib6502.so
+all : dynosaur lib8080.so lib6502.so lib65c02.so
 
 OBJECTS = dynosaur.o shell_commands.o video.o bus.o keyboard.o sound.o
 LIBS = utils Stuff shell SDL2 SDL2_mixer readline dl
@@ -39,6 +39,9 @@ lib6502.so : 6502_plugin.o ../lib/lib6502.a
 
 6502_plugin.o : 6502_plugin.c
 	$(CC) -Wall -fPIC -I../include -I../6502_cpu -c 6502_plugin.c -o 6502_plugin.o
+
+lib65c02.so : 6502_plugin.o ../lib/lib65c02.a
+	$(CC) -Wall -shared -Wl,-soname,lib65c02.so -L../lib 6502_plugin.o -l6502_shell -l65c02 -o lib65c02.so
 
 clean: 
 	rm -vf *.o *.so dynosaur

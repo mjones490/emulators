@@ -47,10 +47,11 @@ static BYTE real_accessor(WORD address, bool read, BYTE value)
             break;
 
         case TIMER_LOW:
-            if (read)
+            if (read) {
                 cpu_clear_signal(SIG_IRQ);
-            else 
+            } else {
                 timer_low = value;
+            }
             break;
 
         case TIMER_HIGH:

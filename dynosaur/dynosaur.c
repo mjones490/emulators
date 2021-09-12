@@ -66,6 +66,7 @@ static BYTE execute_instruction()
             printf("Breakpoint reached.\n");
             halt = true;
         } else if (cpu->get_PC() == nextpoint) {
+            nextpoint = 0x0000;
             halt = true;
         }
 
