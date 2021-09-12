@@ -75,9 +75,16 @@ enum MNEMONIC {
     TXA,    ///< Transfer X to Accumulator
     TYA,    ///< Transfer Y to Accumualtor
     TSX,    ///< Transfer Stack Pointer to X
-    TXS     ///< Transfer X to Stack Pointer
+    TXS,    ///< Transfer X to Stack Pointer
+#ifdef M65C02
+    PHX,
+    PLX,
+    PHY,
+    PLY,
+    STZ,
+#endif
+    END
 };
-#define MNEMONIC_COUNT  (TXS - ADC)
 
 #define SIG_NONE    0x00
 #define SIG_IRQ     0x01

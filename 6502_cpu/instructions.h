@@ -19,9 +19,8 @@ struct instruction_desc_t {
     void (*handler)(void);
 };
 
-
 struct instruction_t {
-    enum MNEMONIC         mnemonic;
+    enum MNEMONIC       mnemonic;
     BYTE                size;
     enum ADDRESS_MODE   mode;
     BYTE                clocks;
@@ -33,7 +32,7 @@ extern struct instruction_t instruction[256];
 
 // This table is key on mnemonic, and describes that
 // instruction.
-extern struct instruction_desc_t instruction_desc[MNEMONIC_COUNT + 1];
+extern struct instruction_desc_t *instruction_desc;
 
 // For example, to get op code 0x0E, look up that code in the
 // instruction table.
@@ -47,4 +46,43 @@ extern struct instruction_desc_t instruction_desc[MNEMONIC_COUNT + 1];
 
 void init_instructions();
 
+#define SET_INSTRUCTION(mnemonic) \
+    set_instruction(mnemonic, #mnemonic, __ ## mnemonic)
 #endif
+
+#define INSTRUCTION(mnemonic) \
+    static void __ ## mnemonic()
+
+void set_map(BYTE code, enum MNEMONIC mnemonic, BYTE size, 
+    enum ADDRESS_MODE mode, BYTE clocks);
+void set_instruction(enum MNEMONIC mnemonic, char* name, 
+    void (*handler)(void));
+
+static WORD address;
+static BYTE value;
+
+static inline void test_result(BYTE result)
+{
+    toggle_flags(Z, result == 0);
+    toggle_flags(N, result & 0x80);
+}
+
+static inline void compare(BYTE reg)
+{
+    value = get_operand();
+    toggle_flags(C, reg >= value);
+    test_result(reg - value);
+}
+
+static inline void branch(bool d)
+{
+    value = get_next_byte();
+    address = regs.PC + ((value & 0x80)? word(value, 0xff) : value);
+    if (d) {
+        ++running.clocks;
+        if (hi(address) != hi(regs.PC))
+            ++running.clocks;
+        regs.PC = address; 
+    }
+}
+

@@ -9,6 +9,8 @@
     Disassemble command
  **********************************************************/
 
+extern const char *mnemonic_string[];
+
 static const char *mode_format[] = {
     [IMM]  = "#$%02x",
     [ABS]  = "$%02x%02x",
@@ -25,69 +27,7 @@ static const char *mode_format[] = {
     [IMP]  = ""
 };
 
-#define MAKE_MNEMONIC_STRING(mnemonic) \
-    #mnemonic,
-     
-static const char *mnemonic_string[] = {
-    MAKE_MNEMONIC_STRING(ADC)    ///< Add with Carry
-    MAKE_MNEMONIC_STRING(AND)    ///< Logical AND
-    MAKE_MNEMONIC_STRING(ASL)    ///< Arithmetic Shift Left
-    MAKE_MNEMONIC_STRING(BCC)    ///< Branch if Carry Clear
-    MAKE_MNEMONIC_STRING(BCS)    ///< Branch if Carry Set
-    MAKE_MNEMONIC_STRING(BEQ)    ///< Branch if Equal
-    MAKE_MNEMONIC_STRING(BIT)    ///< Bit Test
-    MAKE_MNEMONIC_STRING(BMI)    ///< Branch if Minus
-    MAKE_MNEMONIC_STRING(BNE)    ///< Branch if Not Equal
-    MAKE_MNEMONIC_STRING(BPL)    ///< Branch if Positive
-    MAKE_MNEMONIC_STRING(BRK)    ///< Force Interrupt
-    MAKE_MNEMONIC_STRING(BVC)    ///< Branch if Overflow Clear
-    MAKE_MNEMONIC_STRING(BVS)    ///< Branch if Overflow Set
-    MAKE_MNEMONIC_STRING(CLC)    ///< Clear Carry Flag
-    MAKE_MNEMONIC_STRING(CLD)    ///< Clear Decimal Mode
-    MAKE_MNEMONIC_STRING(CLI)    ///< Clear Interupt Disable    
-    MAKE_MNEMONIC_STRING(CLV)    ///< Clear Overflow Flag
-    MAKE_MNEMONIC_STRING(CMP)    ///< Compare
-    MAKE_MNEMONIC_STRING(CPX)    ///< Compare X
-    MAKE_MNEMONIC_STRING(CPY)    ///< Compare Y
-    MAKE_MNEMONIC_STRING(DEC)    ///< Decrement
-    MAKE_MNEMONIC_STRING(DEX)    ///< Decrement X
-    MAKE_MNEMONIC_STRING(DEY)    ///< Decrement Y
-    MAKE_MNEMONIC_STRING(EOR)    ///< Exclusive OR
-    MAKE_MNEMONIC_STRING(INC)    ///< Increment
-    MAKE_MNEMONIC_STRING(INX)    ///< Increment X
-    MAKE_MNEMONIC_STRING(INY)    ///< Increment Y
-    MAKE_MNEMONIC_STRING(JMP)    ///< Unconditional Jump
-    MAKE_MNEMONIC_STRING(JSR)    ///< Jump to Subroutine
-    MAKE_MNEMONIC_STRING(LDA)    ///< Load Accumulator
-    MAKE_MNEMONIC_STRING(LDX)    ///< Load X
-    MAKE_MNEMONIC_STRING(LDY)    ///< Load Y
-    MAKE_MNEMONIC_STRING(LSR)    ///< Logical Shift Right
-    MAKE_MNEMONIC_STRING(NOP)    ///< No Operation
-    MAKE_MNEMONIC_STRING(ORA)    ///< OR Accumulator
-    MAKE_MNEMONIC_STRING(PHA)    ///< Push Accumulator
-    MAKE_MNEMONIC_STRING(PHP)    ///< Push Processor Status
-    MAKE_MNEMONIC_STRING(PLA)    ///< Pull Accumulator
-    MAKE_MNEMONIC_STRING(PLP)    ///< Pull Processor Status
-    MAKE_MNEMONIC_STRING(ROL)    ///< Rotate Left
-    MAKE_MNEMONIC_STRING(ROR)    ///< Rodate Right
-    MAKE_MNEMONIC_STRING(RTI)    ///< Return from Interrupt
-    MAKE_MNEMONIC_STRING(RTS)    ///< Return from Subroutine
-    MAKE_MNEMONIC_STRING(SBC)    ///< Subtract with Borrow
-    MAKE_MNEMONIC_STRING(SEC)    ///< Set Carry Flag
-    MAKE_MNEMONIC_STRING(SED)    ///< Set Decimal Mode
-    MAKE_MNEMONIC_STRING(SEI)    ///< Set Interrupt Disable
-    MAKE_MNEMONIC_STRING(STA)    ///< Store Accumulator
-    MAKE_MNEMONIC_STRING(STX)    ///< Store X
-    MAKE_MNEMONIC_STRING(STY)    ///< Store Y
-    MAKE_MNEMONIC_STRING(TAX)    ///< Transfer Accumulator to X
-    MAKE_MNEMONIC_STRING(TAY)    ///< Transfer Accumulator to Y
-    MAKE_MNEMONIC_STRING(TXA)    ///< Transfer X to Accumulator
-    MAKE_MNEMONIC_STRING(TYA)    ///< Transfer Y to Accumualtor
-    MAKE_MNEMONIC_STRING(TSX)    ///< Transfer Stack Pointer to X
-    MAKE_MNEMONIC_STRING(TXS)    ///< Transfer X to Stack Pointer
-};
-
-static void disasm_instr(WORD *address)
+void disasm_instr(WORD *address)
 {
     int i;
     BYTE code = shell_peek_byte(*address);
