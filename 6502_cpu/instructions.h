@@ -15,7 +15,7 @@
 #define N 0x80 ///< Negative
 
 struct instruction_desc_t {
-    char name[4];
+    char name[5];
     void (*handler)(void);
 };
 
@@ -57,6 +57,7 @@ void set_map(BYTE code, enum MNEMONIC mnemonic, BYTE size,
     enum ADDRESS_MODE mode, BYTE clocks);
 void set_instruction(enum MNEMONIC mnemonic, char* name, 
     void (*handler)(void));
+void disasm_instr(WORD *address);
 
 static WORD address;
 static BYTE value;

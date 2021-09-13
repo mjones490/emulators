@@ -9,9 +9,21 @@ enum ACCESS_TYPE {
     REPLACE
 };
 
-typedef BYTE (*mode_accessor_t)(enum ACCESS_TYPE, BYTE);
-extern mode_accessor_t mode_accessor[16];
+BYTE immediate(enum ACCESS_TYPE access, BYTE value);
+BYTE accumulator(enum ACCESS_TYPE access, BYTE value);
+BYTE absolute(enum ACCESS_TYPE access, BYTE value);
+BYTE absolute_X(enum ACCESS_TYPE access, BYTE value);
+BYTE absolute_Y(enum ACCESS_TYPE access, BYTE value);
+BYTE zero_page(enum ACCESS_TYPE access, BYTE value);
+BYTE zero_page_X(enum ACCESS_TYPE access, BYTE value);
+BYTE zero_page_Y(enum ACCESS_TYPE access, BYTE value);
+BYTE zero_page_indirect_X(enum ACCESS_TYPE access, BYTE value);
+BYTE zero_page_indirect_Y(enum ACCESS_TYPE access, BYTE value);
 
+typedef BYTE (*mode_accessor_t)(enum ACCESS_TYPE, BYTE);
+extern mode_accessor_t mode_accessor[20];
+
+BYTE access_operand(enum ACCESS_TYPE access, BYTE value);
 void set_address_mode(enum ADDRESS_MODE mode, mode_accessor_t accessor);
 
 static inline BYTE get_operand()

@@ -100,7 +100,7 @@ BYTE zero_page_indirect_X(enum ACCESS_TYPE access, BYTE value)
 
 typedef BYTE (*mode_accessor_t)(enum ACCESS_TYPE, BYTE);
 
-mode_accessor_t mode_accessor[16];
+mode_accessor_t mode_accessor[20];
 
 void set_address_mode(enum ADDRESS_MODE mode, mode_accessor_t accessor)
 {

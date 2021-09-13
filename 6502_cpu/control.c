@@ -17,7 +17,8 @@ BYTE cpu_get_clocks()
 }
 
 BYTE exec_instruction(BYTE code)
-{    
+{
+    running.code = code;
     running.instruction = &instruction[code];
     running.descripter = 
         &instruction_desc[running.instruction->mnemonic];
