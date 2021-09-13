@@ -1,7 +1,10 @@
 #define M65C02
-#include "instructions.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+#include "6502_cpu.h"
+#include "instructions.h"
 
 #define MNEMONIC_COUNT  (END - ADC)
 
@@ -10,7 +13,7 @@
      
 void set_6502_instructions();
 
-const char *mnemonic_string[] = {
+static const char *mnemonic_string[] = {
     MAKE_MNEMONIC_STRING(ADC)    ///< Add with Carry
     MAKE_MNEMONIC_STRING(AND)    ///< Logical AND
     MAKE_MNEMONIC_STRING(ASL)    ///< Arithmetic Shift Left
@@ -73,12 +76,102 @@ const char *mnemonic_string[] = {
     MAKE_MNEMONIC_STRING(PHY)    ///< Push Y
     MAKE_MNEMONIC_STRING(PLY)    ///< Pull Y
     MAKE_MNEMONIC_STRING(STZ)    ///< Store zero
+    MAKE_MNEMONIC_STRING(BRA)    ///< Branch Always
+    MAKE_MNEMONIC_STRING(SMB)    ///< Set Memory Bit
+    MAKE_MNEMONIC_STRING(RMB)    ///< Set Memory Bit
+    MAKE_MNEMONIC_STRING(TSB)    ///< Test and Set Bit
+    MAKE_MNEMONIC_STRING(TRB)    ///< Test and Reset Bit
+    MAKE_MNEMONIC_STRING(BBS)    ///< Branch if Bit Set
+    MAKE_MNEMONIC_STRING(BBR)    ///< Branch if Bit Reset
 };
+
+
+static const char *mode_format[] = {
+    [IMM]  = "#$%02x",
+    [ABS]  = "$%02x%02x",
+    [AIX]  = "$%02x%02x,x",
+    [AIY]  = "$%02x%02x,y",
+    [ZP]   = "$%02x",
+    [ZPX]  = "$%02x,x",
+    [ZPY]  = "$%02x,y",
+    [ZPIX] = "($%02x,x)",
+    [ZPIY] = "($%02x),y",
+    [R]    = "$%04x",
+    [IND]  = "($%02x%02x)",
+    [ACC]  = "",
+    [IMP]  = "",
+    [ABSX] = "(%02x%02x,x)",
+    [ZPB] = "$%02x",
+    [ZPR] = "$%02x,$%04x",
+    [IZP] = "($%02x)"
+};
+
+void disasm_instr(WORD *address)
+{
+    int i;
+    BYTE code = get_byte(*address);
+    enum MNEMONIC mnemonic = cpu_get_mnemonic(code);
+    const char *name = mnemonic_string[mnemonic];
+    enum ADDRESS_MODE mode = cpu_get_address_mode(code);
+    int inst_size = cpu_get_instruction_size(code);
+    BYTE opr[2];
+    char ops[16];
+
+    if (0 == name[0]) {
+        mode = IMP;
+        inst_size = 1;
+    }
+
+    printf("%04x:  %02x ", (*address)++, code);
+    opr[0] = 0;
+    opr[1] = 0;
+
+    if (2 <= inst_size) {
+        opr[0] = get_byte((*address)++);
+        printf("%02x ", opr[0]);
+        if (3 == inst_size) {
+            opr[1] = get_byte((*address)++);
+            printf("%02x ", opr[1]);
+        } else {
+            printf("   ");
+        }
+    } else {
+        printf("      ");
+    }
+
+    if (0 == name[0])
+        printf("???? ");
+    else {
+        for (i = 0; i < 3; ++i)
+            printf("%c", name[i] == 0? ' ' : tolower(name[i]));
+        if (mode == ZPB || mode == ZPR)
+            printf("%d ", (code & 0x70) >> 4);
+        else
+            printf("  ");
+    }
+
+    ops[0] = 0;
+
+    if (R == mode)
+        sprintf(ops, mode_format[mode], (*address + 
+            (WORD)((opr[0] & 0x80)? word(opr[0], 0xff) : opr[0])) & 0xffff);
+    else if (ZPR == mode)
+        sprintf(ops, mode_format[mode], opr[0], (*address + 
+            (WORD)((opr[1] & 0x80)? word(opr[1], 0xff) : opr[1])) & 0xffff);
+    else if (2 == inst_size)
+        sprintf(ops, mode_format[mode], opr[0]);
+    else if (3 == inst_size)
+        sprintf(ops, mode_format[mode], opr[1], opr[0]);
+    
+    printf("%s", ops);
+    for (i = strlen(ops); i < 11; ++i)
+        printf(" ");
+}
 
 void set_instruction(enum MNEMONIC mnemonic, char* name, 
     void (*handler)(void))
-{
-    strncpy(instruction_desc[mnemonic].name, name, 3);
+{  
+    strncpy(instruction_desc[mnemonic].name, name, 4);
     instruction_desc[mnemonic].handler = handler;
 }
 
@@ -100,6 +193,30 @@ void set_map(BYTE code, enum MNEMONIC mnemonic, BYTE size,
 enum MNEMONIC cpu_get_mnemonic(BYTE code)
 {
     return instruction[code].mnemonic;
+}
+
+static inline void bit_branch(bool d)
+{
+    value = get_next_byte();
+    address = regs.PC + ((value & 0x80)? word(value, 0xff) : value);
+    if (d) {
+        if (hi(address) != hi(regs.PC))
+            ++running.clocks;
+        regs.PC = address; 
+    }
+}
+
+static inline BYTE bit_mask()
+{
+    return 0x01 << ((running.code & 0x70) >> 4);
+}
+
+BYTE indirect_zero_page(enum ACCESS_TYPE access, BYTE value)
+{
+    if (access != REPLACE)
+        running.op_address = get_word((WORD) get_next_byte());
+            
+    return access_operand(access, value);
 }
 
 INSTRUCTION(PHY)
@@ -129,10 +246,66 @@ INSTRUCTION(STZ)
     put_operand(0);
 }
 
+INSTRUCTION(BRA)
+{
+    branch(true);
+}
+
+INSTRUCTION(JMP)
+{
+    regs.PC = get_next_word();
+    if (running.op_mode == IND)
+        regs.PC = get_next_word();
+    else if (running.op_mode == ABSX)
+        regs.PC = get_word(regs.PC + regs.X);
+}
+
+INSTRUCTION(SMB)
+{
+    value = get_operand() | bit_mask();
+    replace_operand(value);
+}
+
+INSTRUCTION(RMB)
+{
+    value = get_operand() & ~bit_mask();
+    replace_operand(value);
+}
+
+INSTRUCTION(TSB)
+{
+    value = get_operand();
+    toggle_flags(Z, (value & regs.A) > 0);
+    replace_operand(value | regs.A);
+}
+
+INSTRUCTION(TRB)
+{
+    value = get_operand();
+    toggle_flags(Z, (value & regs.A) > 0);
+    replace_operand(value & ~regs.A);
+}
+
+INSTRUCTION(BBS)
+{
+    value = get_byte(get_next_byte());
+    bit_branch((value & bit_mask()) > 0);
+}
+
+INSTRUCTION(BBR)
+{
+    value = get_byte(get_next_byte());
+    bit_branch((value & bit_mask()) == 0);
+}
+
 void init_instructions()
 {
     int i;
     instruction_desc = malloc(sizeof(struct instruction_desc_t) * (MNEMONIC_COUNT+1));
+
+    set_address_mode(ZPB, zero_page);
+    set_address_mode(IZP, indirect_zero_page);
+
     set_6502_instructions();
 
     SET_INSTRUCTION(PHY);
@@ -140,6 +313,14 @@ void init_instructions()
     SET_INSTRUCTION(PHX);
     SET_INSTRUCTION(PLX);
     SET_INSTRUCTION(STZ);
+    SET_INSTRUCTION(BRA);
+    SET_INSTRUCTION(JMP);
+    SET_INSTRUCTION(SMB);
+    SET_INSTRUCTION(RMB);
+    SET_INSTRUCTION(TSB);
+    SET_INSTRUCTION(TRB);
+    SET_INSTRUCTION(BBS);
+    SET_INSTRUCTION(BBR);
 
     for (i = 0; i < 256; ++i)
         set_map(i, NOP, 1, IMP, 0);
@@ -304,5 +485,21 @@ void init_instructions()
     set_map(0x74, STZ, 2, ZPX, 4);
     set_map(0x9C, STZ, 3, ABS, 4);
     set_map(0x9E, STZ, 3, AIX, 5);
+    set_map(0x80, BRA, 2, R, 2);
+    set_map(0x7C, JMP, 3, ABSX, 6);
+    set_map(0x04, TSB, 2, ZP, 5);
+    set_map(0x0C, TSB, 3, ABS, 6);
+    set_map(0x14, TRB, 2, ZP, 5);
+    set_map(0x1C, TRB, 3, ABS, 6);
+    set_map(0x92, STA, 2, IZP, 5);
+    set_map(0xB2, LDA, 2, IZP, 5);
+
+    for (i = 0; i < 8; i++) {
+        int mask = i << 4;
+        set_map(0x87 + mask, SMB, 2, ZPB, 5);
+        set_map(0x07 + mask, RMB, 2, ZPB, 5);
+        set_map(0x8f + mask, BBS, 3, ZPR, 5);
+        set_map(0x0f + mask, BBR, 3, ZPR, 5);
+    }
 }
 

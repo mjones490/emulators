@@ -1,16 +1,5 @@
 #include "instructions.h"
 
-BYTE immediate(enum ACCESS_TYPE access, BYTE value);
-BYTE accumulator(enum ACCESS_TYPE access, BYTE value);
-BYTE absolute(enum ACCESS_TYPE access, BYTE value);
-BYTE absolute_X(enum ACCESS_TYPE access, BYTE value);
-BYTE absolute_Y(enum ACCESS_TYPE access, BYTE value);
-BYTE zero_page(enum ACCESS_TYPE access, BYTE value);
-BYTE zero_page_X(enum ACCESS_TYPE access, BYTE value);
-BYTE zero_page_Y(enum ACCESS_TYPE access, BYTE value);
-BYTE zero_page_indirect_X(enum ACCESS_TYPE access, BYTE value);
-BYTE zero_page_indirect_Y(enum ACCESS_TYPE access, BYTE value);
-
 void init_address_modes()
 {
     set_address_mode(IMM, immediate);

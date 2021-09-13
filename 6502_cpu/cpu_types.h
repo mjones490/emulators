@@ -24,6 +24,7 @@ struct cpu_state_t {
 struct running_t { 
     struct instruction_desc_t *descripter;
     struct instruction_t *instruction;
+    BYTE code;
     enum ADDRESS_MODE op_mode;
     WORD op_address;
     int clocks;

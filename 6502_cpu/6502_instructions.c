@@ -1,6 +1,8 @@
-#include "instructions.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
+#include "6502_cpu.h"
+#include "instructions.h"
 
 #define MNEMONIC_COUNT  (TXS - ADC)
 
@@ -67,6 +69,77 @@ const char *mnemonic_string[] = {
     MAKE_MNEMONIC_STRING(TSX)    ///< Transfer Stack Pointer to X
     MAKE_MNEMONIC_STRING(TXS)    ///< Transfer X to Stack Pointer
 };
+
+static const char *mode_format[] = {
+    [IMM]  = "#$%02x",
+    [ABS]  = "$%02x%02x",
+    [AIX]  = "$%02x%02x,x",
+    [AIY]  = "$%02x%02x,y",
+    [ZP]   = "$%02x",
+    [ZPX]  = "$%02x,x",
+    [ZPY]  = "$%02x,y",
+    [ZPIX] = "($%02x,x)",
+    [ZPIY] = "($%02x),y",
+    [R]    = "$%04x",
+    [IND]  = "($%02x%02x)",
+    [ACC]  = "",
+    [IMP]  = "",
+};
+
+void disasm_instr(WORD *address)
+{
+    int i;
+    BYTE code = get_byte(*address);
+    enum MNEMONIC mnemonic = cpu_get_mnemonic(code);
+    const char *name = mnemonic_string[mnemonic];
+    enum ADDRESS_MODE mode = cpu_get_address_mode(code);
+    int inst_size = cpu_get_instruction_size(code);
+    BYTE opr[2];
+    char ops[16];
+
+    if (0 == name[0]) {
+        mode = IMP;
+        inst_size = 1;
+    }
+
+    printf("%04x:  %02x ", (*address)++, code);
+    opr[0] = 0;
+    opr[1] = 0;
+
+    if (2 <= inst_size) {
+        opr[0] = get_byte((*address)++);
+        printf("%02x ", opr[0]);
+        if (3 == inst_size) {
+            opr[1] = get_byte((*address)++);
+            printf("%02x ", opr[1]);
+        } else {
+            printf("   ");
+        }
+    } else {
+        printf("      ");
+    }
+
+    if (0 == name[0])
+        printf("???");
+    else
+        for (i = 0; i < 3; ++i)
+            printf("%c", tolower(name[i]));
+    printf(" ");
+    
+    ops[0] = 0;
+
+    if (R == mode)
+        sprintf(ops, mode_format[mode], (*address + 
+            (WORD)((opr[0] & 0x80)? word(opr[0], 0xff) : opr[0])) & 0xffff);
+    else if (2 == inst_size)
+        sprintf(ops, mode_format[mode], opr[0]);
+    else if (3 == inst_size)
+        sprintf(ops, mode_format[mode], opr[1], opr[0]);
+    
+    printf("%s", ops);
+    for (i = strlen(ops); i < 11; ++i)
+        printf(" ");
+}
 
 void set_instruction(enum MNEMONIC mnemonic, char* name, 
     void (*handler)(void))

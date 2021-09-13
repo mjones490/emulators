@@ -16,7 +16,13 @@ enum ADDRESS_MODE {
     ZPX,    ///< Zero Page X Indexed
     ZPY,    ///< Zero Page Y Indexed
     ZPIX,   ///< Zero Page Indexed Indirect
-    ZPIY    ///< Zero Page Indirect Indexed
+    ZPIY,   ///< Zero Page Indirect Indexed
+#ifdef M65C02
+    ABSX,   ///< Absolute X
+    ZPB,    ///< Zero Page Bit
+    ZPR,    ///< Zero Page,Relative
+    IZP     ///< Indirect Zero Page
+#endif
 };
 
 enum MNEMONIC {
@@ -82,6 +88,13 @@ enum MNEMONIC {
     PHY,
     PLY,
     STZ,
+    BRA,
+    SMB,
+    RMB,
+    TSB,
+    TRB,
+    BBS,
+    BBR,
 #endif
     END
 };
