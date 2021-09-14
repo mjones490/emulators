@@ -486,13 +486,22 @@ void init_instructions()
     set_map(0x9C, STZ, 3, ABS, 4);
     set_map(0x9E, STZ, 3, AIX, 5);
     set_map(0x80, BRA, 2, R, 2);
-    set_map(0x7C, JMP, 3, ABSX, 6);
     set_map(0x04, TSB, 2, ZP, 5);
     set_map(0x0C, TSB, 3, ABS, 6);
     set_map(0x14, TRB, 2, ZP, 5);
     set_map(0x1C, TRB, 3, ABS, 6);
-    set_map(0x92, STA, 2, IZP, 5);
+    
+    set_map(0x7C, JMP, 3, ABSX, 6);
     set_map(0xB2, LDA, 2, IZP, 5);
+    set_map(0x92, STA, 2, IZP, 5);
+    set_map(0xD2, CMP, 2, IZP, 5);
+    set_map(0x12, ORA, 2, IZP, 5);
+    set_map(0x32, AND, 2, IZP, 5);
+    set_map(0x52, EOR, 2, IZP, 5);
+    set_map(0x72, ADC, 2, IZP, 5);
+    set_map(0xF2, SBC, 2, IZP, 5);
+    set_map(0x1A, INC, 1, ACC, 2);
+    set_map(0x3A, DEC, 1, ACC, 2);
 
     for (i = 0; i < 8; i++) {
         int mask = i << 4;
