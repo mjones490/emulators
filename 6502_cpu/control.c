@@ -35,10 +35,6 @@ BYTE exec_instruction(BYTE code)
 
 BYTE cpu_execute_instruction()
 {
-    static bool interrupts_enabled;
-    
-    interrupts_enabled = are_clear(I);
-
     if (get_signal(SIG_CLI)) {
         clear_flags(I);
         clear_signal(SIG_CLI);
@@ -55,10 +51,10 @@ BYTE cpu_execute_instruction()
         set_flags(I);
         clear_signal(SIG_RESET);
     } else if (get_signal(SIG_NMI)) {
-        interrupt(0xFFFA);
+        interrupt(SIG_NMI);
         clear_signal(SIG_NMI);
-    } else if (interrupts_enabled && get_signal(SIG_IRQ)) {
-        interrupt(0xFFFE);
+    } else if (get_signal(SIG_IRQ)) {
+        interrupt(SIG_IRQ);
     }
  
     cpu_state.prev_PC = regs.PC;   

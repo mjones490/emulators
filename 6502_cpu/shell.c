@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <errno.h>
+#include "cpu_types.h"
 #include "6502_cpu.h"
 #include "6502_shell.h"
 
@@ -56,6 +57,9 @@ BYTE my_accessor(WORD address, bool read_byte, BYTE value)
 
     if (address >= 0xfffa) 
         return vectors[address - 0xfffa];
+
+    if (address == 0xff00)
+        clear_signal(SIG_IRQ);
 
     if (address >= ram_size)
         return 0x00;

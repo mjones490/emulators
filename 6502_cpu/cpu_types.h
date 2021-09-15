@@ -128,5 +128,5 @@ static inline void toggle_flags(BYTE flags, bool state)
 }
 
 
-void interrupt(WORD vector);
+void interrupt(BYTE signal);
 #endif

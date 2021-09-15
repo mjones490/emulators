@@ -83,6 +83,7 @@ static const char *mnemonic_string[] = {
     MAKE_MNEMONIC_STRING(TRB)    ///< Test and Reset Bit
     MAKE_MNEMONIC_STRING(BBS)    ///< Branch if Bit Set
     MAKE_MNEMONIC_STRING(BBR)    ///< Branch if Bit Reset
+    MAKE_MNEMONIC_STRING(WAI)    ///< WAIt for interrupt
 };
 
 
@@ -298,6 +299,36 @@ INSTRUCTION(BBR)
     bit_branch((value & bit_mask()) == 0);
 }
 
+static bool wait_state = false;
+
+INSTRUCTION(WAI)
+{
+    regs.PC--;
+    wait_state = true;
+}
+
+void interrupt(BYTE signal)
+{
+    if (wait_state) {
+        regs.PC++;
+        wait_state = false;
+    }
+
+    if (signal == SIG_NMI) {
+        push(hi(regs.PC));
+        push(lo(regs.PC));
+        push(regs.PS);
+        regs.PC = get_word(0xFFFA);
+        set_flags(I);
+    } else if ((!get_flags(I) || get_flags(B)) && signal == SIG_IRQ) {
+        push(hi(regs.PC));
+        push(lo(regs.PC));
+        push(regs.PS);
+        regs.PC = get_word(0xFFFE);
+        set_flags(I);
+    }
+}
+
 void init_instructions()
 {
     int i;
@@ -321,6 +352,7 @@ void init_instructions()
     SET_INSTRUCTION(TRB);
     SET_INSTRUCTION(BBS);
     SET_INSTRUCTION(BBR);
+    SET_INSTRUCTION(WAI);
 
     for (i = 0; i < 256; ++i)
         set_map(i, NOP, 1, IMP, 0);
@@ -490,6 +522,7 @@ void init_instructions()
     set_map(0x0C, TSB, 3, ABS, 6);
     set_map(0x14, TRB, 2, ZP, 5);
     set_map(0x1C, TRB, 3, ABS, 6);
+    set_map(0xcb, WAI, 1, IMP, 3);
     
     set_map(0x7C, JMP, 3, ABSX, 6);
     set_map(0xB2, LDA, 2, IZP, 5);

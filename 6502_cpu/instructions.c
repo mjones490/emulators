@@ -112,20 +112,11 @@ INSTRUCTION(BPL)
     branch(are_clear(N));
 }
 
-void interrupt(WORD vector)
-{
-    push(hi(regs.PC));
-    push(lo(regs.PC));
-    push(regs.PS);
-    regs.PC = get_word(vector);
-    set_flags(I);
-}
-
 INSTRUCTION(BRK)
 {
     get_next_byte();
     set_flags(B);
-    interrupt(0xFFFE);
+    interrupt(SIG_IRQ);
     clear_flags(B);
 }
 

@@ -95,6 +95,7 @@ enum MNEMONIC {
     TRB,
     BBS,
     BBR,
+    WAI,
 #endif
     END
 };

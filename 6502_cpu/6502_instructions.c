@@ -331,3 +331,20 @@ void init_instructions()
     set_map(0xFE, INC, 3, AIX, 7);
 }
 
+void interrupt(BYTE signal)
+{
+    if (signal == SIG_NMI) {
+        push(hi(regs.PC));
+        push(lo(regs.PC));
+        push(regs.PS);
+        regs.PC = get_word(0xFFFA);
+        set_flags(I);
+    } else if ((!get_flags(I) || get_flags(B)) && signal == SIG_IRQ) {
+        push(hi(regs.PC));
+        push(lo(regs.PC));
+        push(regs.PS);
+        regs.PC = get_word(0xFFFE);
+        set_flags(I);
+    }
+}
+
