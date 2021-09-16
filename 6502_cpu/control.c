@@ -46,9 +46,7 @@ BYTE cpu_execute_instruction()
     }        
 
     if (get_signal(SIG_RESET)) {
-        regs.SP -= 3;
-        regs.PC = get_word(0xFFFC);
-        set_flags(I);
+        interrupt(SIG_RESET);
         clear_signal(SIG_RESET);
     } else if (get_signal(SIG_NMI)) {
         interrupt(SIG_NMI);
