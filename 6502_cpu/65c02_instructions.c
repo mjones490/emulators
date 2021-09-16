@@ -13,80 +13,6 @@
      
 void set_6502_instructions();
 
-static const char *mnemonic_string[] = {
-    MAKE_MNEMONIC_STRING(ADC)    ///< Add with Carry
-    MAKE_MNEMONIC_STRING(AND)    ///< Logical AND
-    MAKE_MNEMONIC_STRING(ASL)    ///< Arithmetic Shift Left
-    MAKE_MNEMONIC_STRING(BCC)    ///< Branch if Carry Clear
-    MAKE_MNEMONIC_STRING(BCS)    ///< Branch if Carry Set
-    MAKE_MNEMONIC_STRING(BEQ)    ///< Branch if Equal
-    MAKE_MNEMONIC_STRING(BIT)    ///< Bit Test
-    MAKE_MNEMONIC_STRING(BMI)    ///< Branch if Minus
-    MAKE_MNEMONIC_STRING(BNE)    ///< Branch if Not Equal
-    MAKE_MNEMONIC_STRING(BPL)    ///< Branch if Positive
-    MAKE_MNEMONIC_STRING(BRK)    ///< Force Interrupt
-    MAKE_MNEMONIC_STRING(BVC)    ///< Branch if Overflow Clear
-    MAKE_MNEMONIC_STRING(BVS)    ///< Branch if Overflow Set
-    MAKE_MNEMONIC_STRING(CLC)    ///< Clear Carry Flag
-    MAKE_MNEMONIC_STRING(CLD)    ///< Clear Decimal Mode
-    MAKE_MNEMONIC_STRING(CLI)    ///< Clear Interupt Disable    
-    MAKE_MNEMONIC_STRING(CLV)    ///< Clear Overflow Flag
-    MAKE_MNEMONIC_STRING(CMP)    ///< Compare
-    MAKE_MNEMONIC_STRING(CPX)    ///< Compare X
-    MAKE_MNEMONIC_STRING(CPY)    ///< Compare Y
-    MAKE_MNEMONIC_STRING(DEC)    ///< Decrement
-    MAKE_MNEMONIC_STRING(DEX)    ///< Decrement X
-    MAKE_MNEMONIC_STRING(DEY)    ///< Decrement Y
-    MAKE_MNEMONIC_STRING(EOR)    ///< Exclusive OR
-    MAKE_MNEMONIC_STRING(INC)    ///< Increment
-    MAKE_MNEMONIC_STRING(INX)    ///< Increment X
-    MAKE_MNEMONIC_STRING(INY)    ///< Increment Y
-    MAKE_MNEMONIC_STRING(JMP)    ///< Unconditional Jump
-    MAKE_MNEMONIC_STRING(JSR)    ///< Jump to Subroutine
-    MAKE_MNEMONIC_STRING(LDA)    ///< Load Accumulator
-    MAKE_MNEMONIC_STRING(LDX)    ///< Load X
-    MAKE_MNEMONIC_STRING(LDY)    ///< Load Y
-    MAKE_MNEMONIC_STRING(LSR)    ///< Logical Shift Right
-    MAKE_MNEMONIC_STRING(NOP)    ///< No Operation
-    MAKE_MNEMONIC_STRING(ORA)    ///< OR Accumulator
-    MAKE_MNEMONIC_STRING(PHA)    ///< Push Accumulator
-    MAKE_MNEMONIC_STRING(PHP)    ///< Push Processor Status
-    MAKE_MNEMONIC_STRING(PLA)    ///< Pull Accumulator
-    MAKE_MNEMONIC_STRING(PLP)    ///< Pull Processor Status
-    MAKE_MNEMONIC_STRING(ROL)    ///< Rotate Left
-    MAKE_MNEMONIC_STRING(ROR)    ///< Rodate Right
-    MAKE_MNEMONIC_STRING(RTI)    ///< Return from Interrupt
-    MAKE_MNEMONIC_STRING(RTS)    ///< Return from Subroutine
-    MAKE_MNEMONIC_STRING(SBC)    ///< Subtract with Borrow
-    MAKE_MNEMONIC_STRING(SEC)    ///< Set Carry Flag
-    MAKE_MNEMONIC_STRING(SED)    ///< Set Decimal Mode
-    MAKE_MNEMONIC_STRING(SEI)    ///< Set Interrupt Disable
-    MAKE_MNEMONIC_STRING(STA)    ///< Store Accumulator
-    MAKE_MNEMONIC_STRING(STX)    ///< Store X
-    MAKE_MNEMONIC_STRING(STY)    ///< Store Y
-    MAKE_MNEMONIC_STRING(TAX)    ///< Transfer Accumulator to X
-    MAKE_MNEMONIC_STRING(TAY)    ///< Transfer Accumulator to Y
-    MAKE_MNEMONIC_STRING(TXA)    ///< Transfer X to Accumulator
-    MAKE_MNEMONIC_STRING(TYA)    ///< Transfer Y to Accumualtor
-    MAKE_MNEMONIC_STRING(TSX)    ///< Transfer Stack Pointer to X
-    MAKE_MNEMONIC_STRING(TXS)    ///< Transfer X to Stack Pointer
-
-    MAKE_MNEMONIC_STRING(PHX)    ///< Push X
-    MAKE_MNEMONIC_STRING(PLX)    ///< Pull X
-    MAKE_MNEMONIC_STRING(PHY)    ///< Push Y
-    MAKE_MNEMONIC_STRING(PLY)    ///< Pull Y
-    MAKE_MNEMONIC_STRING(STZ)    ///< Store zero
-    MAKE_MNEMONIC_STRING(BRA)    ///< Branch Always
-    MAKE_MNEMONIC_STRING(SMB)    ///< Set Memory Bit
-    MAKE_MNEMONIC_STRING(RMB)    ///< Set Memory Bit
-    MAKE_MNEMONIC_STRING(TSB)    ///< Test and Set Bit
-    MAKE_MNEMONIC_STRING(TRB)    ///< Test and Reset Bit
-    MAKE_MNEMONIC_STRING(BBS)    ///< Branch if Bit Set
-    MAKE_MNEMONIC_STRING(BBR)    ///< Branch if Bit Reset
-    MAKE_MNEMONIC_STRING(WAI)    ///< WAIt for interrupt
-};
-
-
 static const char *mode_format[] = {
     [IMM]  = "#$%02x",
     [ABS]  = "$%02x%02x",
@@ -112,7 +38,7 @@ void disasm_instr(WORD *address)
     int i;
     BYTE code = get_byte(*address);
     enum MNEMONIC mnemonic = cpu_get_mnemonic(code);
-    const char *name = mnemonic_string[mnemonic];
+    const char *name = instruction_desc[mnemonic].name;
     enum ADDRESS_MODE mode = cpu_get_address_mode(code);
     int inst_size = cpu_get_instruction_size(code);
     BYTE opr[2];
@@ -300,11 +226,17 @@ INSTRUCTION(BBR)
 }
 
 static bool wait_state = false;
-
+static bool stopped = false;
 INSTRUCTION(WAI)
 {
     regs.PC--;
     wait_state = true;
+}
+
+INSTRUCTION(STP)
+{
+    regs.PC--;
+    stopped = true;
 }
 
 void interrupt(BYTE signal)
@@ -314,18 +246,33 @@ void interrupt(BYTE signal)
         wait_state = false;
     }
 
+    if (signal == SIG_RESET) {
+        regs.SP -= 3;
+        regs.PC = get_word(0xFFFC);
+        stopped = false;
+        set_flags(I);
+        return;
+    }  
+
+    if (stopped)
+        return;
+
     if (signal == SIG_NMI) {
         push(hi(regs.PC));
         push(lo(regs.PC));
         push(regs.PS);
         regs.PC = get_word(0xFFFA);
         set_flags(I);
-    } else if ((!get_flags(I) || get_flags(B)) && signal == SIG_IRQ) {
+        return;
+    } 
+
+    if ((!get_flags(I) || get_flags(B)) && signal == SIG_IRQ) {
         push(hi(regs.PC));
         push(lo(regs.PC));
         push(regs.PS);
         regs.PC = get_word(0xFFFE);
         set_flags(I);
+        return;
     }
 }
 
@@ -353,6 +300,7 @@ void init_instructions()
     SET_INSTRUCTION(BBS);
     SET_INSTRUCTION(BBR);
     SET_INSTRUCTION(WAI);
+    SET_INSTRUCTION(STP);
 
     for (i = 0; i < 256; ++i)
         set_map(i, NOP, 1, IMP, 0);
@@ -522,7 +470,8 @@ void init_instructions()
     set_map(0x0C, TSB, 3, ABS, 6);
     set_map(0x14, TRB, 2, ZP, 5);
     set_map(0x1C, TRB, 3, ABS, 6);
-    set_map(0xcb, WAI, 1, IMP, 3);
+    set_map(0xCB, WAI, 1, IMP, 3);
+    set_map(0xDB, STP, 1, IMP, 3);
     
     set_map(0x7C, JMP, 3, ABSX, 6);
     set_map(0xB2, LDA, 2, IZP, 5);
