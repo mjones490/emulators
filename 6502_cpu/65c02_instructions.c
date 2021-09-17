@@ -251,6 +251,7 @@ void interrupt(BYTE signal)
         regs.PC = get_word(0xFFFC);
         stopped = false;
         set_flags(I);
+        clear_flags(D);
         return;
     }  
 
@@ -263,6 +264,7 @@ void interrupt(BYTE signal)
         push(regs.PS);
         regs.PC = get_word(0xFFFA);
         set_flags(I);
+        clear_flags(D);
         return;
     } 
 
@@ -272,6 +274,7 @@ void interrupt(BYTE signal)
         push(regs.PS);
         regs.PC = get_word(0xFFFE);
         set_flags(I);
+        clear_flags(D);
         return;
     }
 }
