@@ -89,7 +89,17 @@ void finalize()
 
 void cpu_interrupt(BYTE vector)
 {
-    cpu_set_signal(SIG_IRQ);
+    switch (vector) {
+        case 0:
+            cpu_set_signal(SIG_RESET);
+            break;
+        case 1:
+            cpu_set_signal(SIG_NMI);
+            break;
+        default:
+            cpu_set_signal(SIG_IRQ);
+            break;
+    }
 }
 
 struct cpu_interface *get_cpu_interface()

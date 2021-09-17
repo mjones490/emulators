@@ -201,6 +201,22 @@ static int out_port(int argc, char **argv)
     return 0;
 }
 
+static int interrupt(int argc, char **argv)
+{
+    static int int_num = 0;
+    int tmp;
+
+    if (argc > 0) {
+        if (1 == sscanf(argv[1], "%d", &tmp))
+            int_num = tmp;
+    }
+
+    printf("Signalling interrupt %d.\n", int_num);
+    cpu->interrupt(int_num); 
+
+    return 0;
+}
+
 void shell_load_dynosaur_commands()
 {
     shell_add_command("step", "Execute single instruction.", step, true);
@@ -212,5 +228,6 @@ void shell_load_dynosaur_commands()
     shell_add_command("load", "Load a binary image file into RAM", load, false);
     shell_add_command("out", "Write value to port", out_port, false);
     shell_add_command("next", "Step, preceding through subroutine calls.", next, false);
+    shell_add_command("int", "Trigger a cpu interrupt.", interrupt, false);
 }
 
