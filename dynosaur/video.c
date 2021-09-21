@@ -6,6 +6,7 @@
 #include "Stuff.h"
 #include "config.h"
 #include "dynosaur.h"
+#include "bus.h"
 
 struct {
     SDL_Window      *window;
@@ -14,11 +15,12 @@ struct {
     Uint16          *pixels;
     Uint16          location;
     struct {
-        BYTE        screen[24][40];  // 8000
-        BYTE        color_table[16]; // 83c0
-        BYTE        free_space[48];  // 83d0
-        BYTE        pattern_table[256][8]; // 8400
-        BYTE        padding[256];
+        BYTE        screen[24][40];  // 0000
+        BYTE        color_table[32]; // 03c0
+        BYTE        free_space[32];  // 03e0
+        BYTE        pattern_table[256][8]; // 0400
+        BYTE        sprite_table[16][8]; // 0C00
+        BYTE        padding[128];
     } vdp_ram;
     Uint16          color[16];
     Uint32          timer;
@@ -46,6 +48,44 @@ void draw_char(int row, int col, BYTE char_no)
 
 }
 
+void render_sprite(BYTE sprite_no)
+{
+    BYTE *sprite_table = video.vdp_ram.sprite_table[sprite_no];
+    WORD address = word(sprite_table[0], sprite_table[1]);
+
+    if (address == 0)
+        return;
+     
+    BYTE sp_row = sprite_table[2];
+    WORD sp_col = word(sprite_table[4], sprite_table[5]);
+    BYTE width = sprite_table[6];
+    BYTE height = sprite_table[7];
+    BYTE color_byte;
+    BYTE color;
+
+    for (BYTE i = 0; i < height; i++) {
+        WORD row = 320 * ((BYTE) sp_row + i);
+        if ((sp_row + i) >= 192)
+            continue;
+        for (BYTE j = 0; j < width; j+= 2) {
+            WORD col = (sp_col + j);
+            color_byte = ram_accessor(address, true, 0);
+            color = color_byte >> 4;
+            if (color > 0 && (col < 320))
+                video.pixels[row + col] = video.color[color];
+            color = color_byte & 0x0f;
+            if (color > 0 && ((j+1) < width) && (col < 319))
+                video.pixels[row + col + 1] = video.color[color];
+            address++;
+        }
+    }
+}
+
+void render_sprites()
+{
+    render_sprite(0);
+}
+
 void refresh_video()
 {
     int pitch;
@@ -67,6 +107,9 @@ void refresh_video()
             ch = video.vdp_ram.screen[i][j];
             draw_char(i, j, ch);
         }
+
+
+    render_sprites();
 
     SDL_UnlockTexture(video.texture);
 
@@ -152,6 +195,11 @@ static void load_config()
     load_tables();
 }
 
+void log_video_section(char *description, void *location)
+{
+    LOG_INF("%s at %04x.\n", description, (video.location + (location - (void *)&video.vdp_ram)));
+}
+
 void init_video(bool full_init)
 {
     LOG_INF("Initilizing video.\n");
@@ -193,6 +241,13 @@ void init_video(bool full_init)
 
     memset(video.vdp_ram.color_table, 0x17, 32);
     attach_bus(vdp_ram_accessor, hi(video.location), sizeof(video.vdp_ram) / 256);
+    
+    LOG_INF("Video RAM size %d pages.\n", sizeof(video.vdp_ram) / 256);
+    log_video_section("Screen", &video.vdp_ram.screen);
+    log_video_section("Color table", &video.vdp_ram.color_table);
+    log_video_section("Pattern table", &video.vdp_ram.pattern_table);
+    log_video_section("Sprite table", &video.vdp_ram.sprite_table);
+
     refresh_video();
 }
 
