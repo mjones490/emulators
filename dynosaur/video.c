@@ -64,9 +64,11 @@ void render_sprite(BYTE sprite_no)
     BYTE color;
 
     for (BYTE i = 0; i < height; i++) {
-        WORD row = 320 * ((BYTE) sp_row + i);
-        if ((sp_row + i) >= 192)
+        WORD row = 320 * (BYTE) (sp_row + i);
+        if ((BYTE)(sp_row + i) >= 192) {
+            address += (width + 1) / 2;
             continue;
+        }
         for (BYTE j = 0; j < width; j+= 2) {
             WORD col = (sp_col + j);
             color_byte = ram_accessor(address, true, 0);
@@ -74,8 +76,9 @@ void render_sprite(BYTE sprite_no)
             if (color > 0 && (col < 320))
                 video.pixels[row + col] = video.color[color];
             color = color_byte & 0x0f;
-            if (color > 0 && ((j+1) < width) && (col < 319))
-                video.pixels[row + col + 1] = video.color[color];
+            col++;
+            if (color > 0 && col < 320 && ((j + 1) < width))
+                video.pixels[row + col] = video.color[color];
             address++;
         }
     }
