@@ -86,7 +86,8 @@ void render_sprite(BYTE sprite_no)
 
 void render_sprites()
 {
-    render_sprite(0);
+    for (int i = 0; i < 16; i++)
+        render_sprite(i);
 }
 
 void refresh_video()
