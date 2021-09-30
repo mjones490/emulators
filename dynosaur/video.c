@@ -51,11 +51,12 @@ void draw_char(int row, int col, BYTE char_no)
 void render_sprite(BYTE sprite_no)
 {
     BYTE *sprite_table = video.vdp_ram.sprite_table[sprite_no];
-    WORD address = word(sprite_table[0], sprite_table[1]);
 
-    if (address == 0)
+    // Sprite pattern can't start in zero page.
+    if (sprite_table[1] == 0)
         return;
      
+    WORD address = word(sprite_table[0], sprite_table[1]);
     BYTE sp_row = sprite_table[2];
     WORD sp_col = word(sprite_table[4], sprite_table[5]);
     BYTE width = sprite_table[6];

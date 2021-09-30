@@ -33,6 +33,7 @@ port_accessor_t dynamic_port_accessor;
 
 #define TIMER_LOW       0x6004
 #define TIMER_HIGH      0x6005
+#define TEXT_KEY        0x6010
 #define STD_KEY         0x6011
 #define KEY             0x6012
 #define KEY_STAT        0x6013
@@ -62,8 +63,10 @@ static BYTE real_accessor(WORD address, bool read, BYTE value)
 
         case KEY:
         case STD_KEY:
+        case TEXT_KEY:
         case KEY_STAT:
             value = dynamic_port_accessor(address & 0xff, read, value);
+            cpu_clear_signal(SIG_IRQ);
             break;
 
         default:
