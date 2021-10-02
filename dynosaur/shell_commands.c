@@ -84,6 +84,7 @@ static int next(int argc, char **argv)
 {
     int matched;
     WORD new_pc;
+
     if (1 < argc) {
         matched = sscanf(argv[1], "%4x", &new_pc);
         if (matched)
@@ -100,6 +101,10 @@ static int go(int argc, char **argv)
 {
     int matched;
     WORD new_pc;
+    
+    if (2 < argc)
+        load(argc, argv);
+
     if (1 < argc) {
         matched = sscanf(argv[1], "%4x", &new_pc);
         if (matched)
