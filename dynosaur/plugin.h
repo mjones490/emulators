@@ -29,7 +29,8 @@ struct cpu_interface {
 };
 
 #ifndef PLUGIN_INTERFACE
-struct cpu_interface *(*get_cpu_interface)();
+#define PLUGIN_INTERFACE
+static struct cpu_interface *(*get_cpu_interface)();
 #endif
 
 #endif
