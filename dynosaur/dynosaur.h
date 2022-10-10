@@ -4,6 +4,7 @@
 #include "types.h"
 #include "plugin.h"
 #include "bus.h"
+#include "jLib.h"
 
 struct config_t {
     char cpu_config[32];
@@ -12,6 +13,7 @@ struct config_t {
     int ram_size;
     char *bin_dir;
     Uint32 clock_speed;
+    jVal *root;
 };
 
 extern struct cpu_interface *cpu;
