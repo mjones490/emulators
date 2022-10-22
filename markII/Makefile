@@ -22,7 +22,8 @@ EXE_LIBS := 6502 \
             SDL2_mixer \
             m
 
-INC_DIR = ../include \
+INC_DIR = ./include \
+            ../include \
           ../../Stuff \
           /usr/include/SDL2
 
@@ -33,7 +34,7 @@ LFLAGS = -Wall $(LIB_DIR:%=-L%)
 
 CP = cp -v
 
-EXE_OBJS := $(EXE_OBJS:%=%.o)
+EXE_OBJS := $(EXE_OBJS:%=obj/%.o)
 EXE_LIBS := $(EXE_LIBS:%=-l%)
 
 
@@ -47,16 +48,21 @@ build_libs :
 .SECONDARY :
  
 clean :
-	rm -vf $(EXE_OBJS) $(LIB_OBJS) $(EXE) $(LIB) *.d
-	rm -vf $(SHELL_LIB_OBJS) $(SHELL_LIB)
+	$(RM) -v $(EXE)
+	$(RM) -vr obj
 	$(MAKE) -C ../shell clean
 	$(MAKE) -C ../6502_cpu clean
 
 $(EXE) : $(EXE_OBJS)
 	$(CC) $(LFLAGS) $(EXE_OBJS) $(EXE_LIBS) -o $(EXE)
 
-%.o : %.c
+obj/%.o : src/%.c | obj/
 	$(CC) $(CFLAGS) -c $< -o $@
+
+obj/ :
+	mkdir -v obj
 
 docs :
 	doxygen Doxyfile
+
+-include obj/*.d
