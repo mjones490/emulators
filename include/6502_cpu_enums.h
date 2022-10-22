@@ -19,7 +19,7 @@ enum ADDRESS_MODE {
     ZPIY    ///< Zero Page Indirect Indexed
 };
 
-enum NMONIC {
+enum MNEMONIC {
     ADC,    ///< Add with Carry
     AND,    ///< Logical AND
     ASL,    ///< Arithmetic Shift Left
@@ -77,7 +77,7 @@ enum NMONIC {
     TSX,    ///< Transfer Stack Pointer to X
     TXS     ///< Transfer X to Stack Pointer
 };
-#define NMONIC_COUNT  (TXS - ADC)
+#define MNEMONIC_COUNT  (TXS - ADC)
 
 #define SIG_NONE    0x00
 #define SIG_IRQ     0x01

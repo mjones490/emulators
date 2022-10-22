@@ -16,7 +16,7 @@ BYTE cpu_get_reg_PS();
 void cpu_set_reg_PC(WORD value);
 WORD cpu_get_reg_PC();
 WORD cpu_get_prev_PC();
-enum NMONIC cpu_get_nmonic(BYTE code);
+enum MNEMONIC cpu_get_mnemonic(BYTE code);
 enum ADDRESS_MODE cpu_get_address_mode(BYTE code);
 int cpu_get_instruction_size(BYTE code);
 BYTE cpu_get_clocks();
