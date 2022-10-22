@@ -34,13 +34,13 @@ lib8080.so : 8080_plugin.o
 	$(CC) -Wall -shared -Wl,-soname,lib8080.so -L../lib 8080_plugin.o -l8080 -o lib8080.so
 
 8080_plugin.o : 8080_plugin.c
-	$(CC) -Wall -fPIC  $(INCLUDE) -I../8080_cpu -c 8080_plugin.c -o 8080_plugin.o
+	$(CC) -Wall -fPIC  $(INCLUDE) -I../8080_cpu/include -c 8080_plugin.c -o 8080_plugin.o
 
 lib6502.so : 6502_plugin.o ../lib/lib6502.a
 	$(CC) -Wall -shared -Wl,-soname,lib6502.so -L../lib 6502_plugin.o -l6502_shell -l6502 -o lib6502.so
 
 6502_plugin.o : 6502_plugin.c
-	$(CC) -Wall -fPIC  $(INCLUDE) -I../6502_cpu -c 6502_plugin.c -o 6502_plugin.o
+	$(CC) -Wall -fPIC  $(INCLUDE) -I../6502_cpu/include -c 6502_plugin.c -o 6502_plugin.o
 
 lib65c02.so : 6502_plugin.o ../lib/lib65c02.a
 	$(CC) -Wall -shared -Wl,-soname,lib65c02.so -L../lib 6502_plugin.o -l6502_shell -l65c02 -o lib65c02.so
