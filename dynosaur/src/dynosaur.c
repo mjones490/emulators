@@ -162,7 +162,7 @@ void load_config(char *config_name)
             LOG_FTL("Cannot determine default configuration.\n");
         strncpy(dyn_config.cpu_config, jTemp->string, 32);
     } else {
-        sprintf(dyn_config.cpu_config, "%s_CPU", config_name);
+        sprintf(dyn_config.cpu_config, "%s", config_name);
     }
     LOG_INF("CPU configuration name is %s.\n", dyn_config.cpu_config);
 
