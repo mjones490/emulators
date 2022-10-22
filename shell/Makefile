@@ -5,17 +5,17 @@ EXE := shell
 EXE_OBJS := simple_shell
 EXE_LIBS := shell readline
 
-INC_DIR = ../include
+INC_DIR = ./include ../include
 LIB_DIR = ../lib
 
-CFLAGS = -Wall -fPIC -g -MMD -MP -D_REENTRANT -I$(INC_DIR)
+CFLAGS = -Wall -g -MMD -MP -D_REENTRANT $(addprefix -I ,$(INC_DIR))
 LFLAGS = -Wall -L$(LIB_DIR)
 
 CP = cp -v
 
-EXE_OBJS := $(EXE_OBJS:%=%.o)
+EXE_OBJS := $(EXE_OBJS:%=obj/%.o)
 LIB := $(LIB:%=lib%.a)
-LIB_OBJS := $(LIB_OBJS:%=%.o)
+LIB_OBJS := $(LIB_OBJS:%=obj/%.o)
 EXE_LIBS := $(EXE_LIBS:%=-l%)
 
 all : $(LIB)
@@ -28,10 +28,16 @@ all : $(LIB)
 	$(CP) $(LIB) $(LIB_DIR)
 
 clean :
-	rm -f $(EXE_OBJS) $(LIB_OBJS) $(EXE) $(LIB) *.d
+	$(RM) -v $(EXE) $(LIB)
+	$(RM) -vr obj
 
 $(EXE) : $(EXE_OBJS) $(LIB)
 	$(CC) $(LFLAGS) $(EXE_OBJS) $(EXE_LIBS) -o $(EXE)
 
-%.o : %.c
+obj/%.o : src/%.c | obj/
 	$(CC) $(CFLAGS) -c $< -o $@
+
+obj/ :
+	mkdir -v obj
+
+-include obj/*.d

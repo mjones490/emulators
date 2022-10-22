@@ -38,9 +38,9 @@ build_libs :
 .SECONDARY :
  
 clean :
-	rm -vf obj/*  $(SHELL_6502_LIB) $(SHELL_65C02_LIB) $(LIB_65C02) $(LIB_6502)
-	rm -vf shell_6502 shell_65c02
-	rmdir obj
+	$(RM) -v $(SHELL_6502_LIB) $(SHELL_65C02_LIB) $(LIB_65C02) $(LIB_6502)
+	$(RM) -v shell_6502 shell_65c02
+	$(RM) -vr obj
 	cd ../shell && $(MAKE) clean
 
 rebuild : clean
