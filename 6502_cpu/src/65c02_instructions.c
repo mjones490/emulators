@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include "6502_cpu_enums.h"
 #include "6502_cpu.h"
 #include "instructions.h"
 
