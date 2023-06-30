@@ -9,7 +9,6 @@
 #include "bus.h"
 
 struct {
-    jVal            *config;
     SDL_Window      *window;
     SDL_Renderer    *renderer;
     SDL_Texture     *texture;
@@ -134,40 +133,6 @@ BYTE vdp_ram_accessor(WORD address, bool read, BYTE value)
     return value;
 }
 
-static void set_char_pattern(BYTE code, char* pattern)
-{            
-    BYTE hex[8];
-    LOG_DBG("Setting code %d pattern to \"%s\%\"\n", code, pattern);
-    sscanf(pattern, "%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX", 
-        &hex[0], &hex[1], &hex[2], &hex[3],
-        &hex[4], &hex[5], &hex[6], &hex[7]);
-    memcpy(video.vdp_ram.pattern_table[code], hex, 8);
- 
-}
-static void load_patterns()
-{
-    jVal *patterns = jSearch(video.config, "patterns");
-    BYTE code;
-    int index = 0;
-    jVal *pattern;
-    jVal *value;
-
-    while (pattern = patterns->array[index++]) {
-        value = jSearch(pattern, "code");
-        code = value->number;
-        value = jSearch(pattern, "pattern");
-        if (value->type == VT_ARRAY) {
-            jVal **array = value->array;
-            int pattern_num = 0;
-            while (value = array[pattern_num++]) {
-                set_char_pattern(code++, value->string);
-            }
-        } else {
-            set_char_pattern(code, value->string);
-        }
-    }
-}
-
 static void load_tables()
 {
     struct section_struct *section;
@@ -185,15 +150,16 @@ static void load_tables()
         LOG_ERR("Could not find VIDEO configuration section");
         return;
     }
+
     key = section->key;
     LIST_FOR_EVERY(list, &section->key->list, first) {
         key = GET_ELEMENT(struct key_struct, list, list);
         if (1 == sscanf(key->name, "C%02hhX", &code)) {
-//            LOG_DBG("%s=%s\n", key->name, key->value);
-//            sscanf(key->value, "%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX", 
-//               &hex[0], &hex[1], &hex[2], &hex[3],
-//                &hex[4], &hex[5], &hex[6], &hex[7]);
-//            memcpy(video.vdp_ram.pattern_table[code], hex, 8);
+            LOG_DBG("%s=%s\n", key->name, key->value);
+            sscanf(key->value, "%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX", 
+                &hex[0], &hex[1], &hex[2], &hex[3],
+                &hex[4], &hex[5], &hex[6], &hex[7]);
+            memcpy(video.vdp_ram.pattern_table[code], hex, 8);
         } else if (1 == sscanf(key->name, "COLOR%1hhX", &code)) {
             LOG_DBG("%s=%s\n",  key->name, key->value);
             sscanf(key->value, "%02hhX%02hhX%02hhX", &hex[0], &hex[1], &hex[2]);
@@ -201,44 +167,34 @@ static void load_tables()
         }
     }
     SDL_FreeFormat(format);
-    load_patterns();
 }
 
 static void load_config()
 {
     char buf[256];
     char *tmp;
-    jVal *value;
 
-    video.config = jSearch(dyn_config.root, "video");
-
-    int scale = 1;
-    value = jSearch(video.config, "screen.scale");
-    if (value != NULL)
-        scale = value->number;
-
-    if (NULL != jSearch(video.config, "screen")) {
-        video.width = jSearch(video.config, "screen.width")->number * scale;
-        video.height = jSearch(video.config, "screen.height")->number * scale;
+    tmp = get_config_string("VIDEO", "SCREEN_SIZE");
+    if (NULL != tmp) {
+        tmp = split_string(tmp, buf, 'x');
+        video.width = string_to_int(buf);
+        video.height = string_to_int(tmp);
     } else {
         LOG_WRN("SCREEN_SIZE not found.  Setting to default.\n");
     }
     LOG_INF("Screen size = %dx%d.\n", video.width, video.height);
  
-    
-    video.title = jSearch(video.config, "title")->string;
+    video.title = get_config_string("VIDEO", "TITLE");
     if (NULL == video.title) {
         LOG_WRN("TITLE not found.  Setting to default.\n");
         video.title = "";
     }
     LOG_INF("Title = \"%s\".\n", video.title);
 
-    value = jSearch(video.config, "ram-location");
-    if (NULL == value) {
+    video.location = get_config_hex("VIDEO", "LOCATION");
+    if (0 == video.location) {
         LOG_WRN("Video RAM location not found. Setting to default.\n");
         video.location = 0x8000;
-    } else {
-        video.location = value->number;
     }
     LOG_INF("Video RAM located at 0x%04x.\n", video.location);
     load_tables();

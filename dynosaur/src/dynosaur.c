@@ -16,11 +16,9 @@
 #include "keyboard.h"
 #include "sound.h"
 #include "dynosaur.h"
-#include "jLib.h"
 
 struct config_t dyn_config;
 struct cpu_interface *cpu;
-jVal *root;
 WORD breakpoint = 0;
 WORD nextpoint = 0;
 
@@ -146,58 +144,51 @@ static void cycle()
 void load_config(char *config_name)
 {
     char *temp;
-    jVal *jTemp;
-
-    root = jLoad("dynosaur.json");
-    dyn_config.root = root;
 
     init_config("dynosaur.cfg");
-    
-    temp = jSearch(root, "log-level")->string;
+    temp = get_config_string("LOGGING", "LOG_LEVEL");
     set_log_level(temp);
 
     if (config_name == NULL) {
-        jTemp = jSearch(root, "cpu.default");
-        if (jTemp == NULL)
+        temp = get_config_string("DYNOSAUR", "DEFAULT_CPU");
+        if (temp == NULL)
             LOG_FTL("Cannot determine default configuration.\n");
-        strncpy(dyn_config.cpu_config, jTemp->string, 32);
+        strncpy(dyn_config.cpu_config, temp, 32);
     } else {
-        sprintf(dyn_config.cpu_config, "%s", config_name);
+        sprintf(dyn_config.cpu_config, "%s_CPU", config_name);
     }
     LOG_INF("CPU configuration name is %s.\n", dyn_config.cpu_config);
 
-    jTemp = jSearch(root, "cpu");
-    jVal *jCPU = jSearch(jTemp, dyn_config.cpu_config);
-    dyn_config.cpu_name = jSearch(jCPU, "name")->string;
+    dyn_config.cpu_name = get_config_string(dyn_config.cpu_config, "NAME");
     
     if (dyn_config.cpu_name == NULL)
         LOG_ERR("No CPU name.\n");
     else
         LOG_INF("CPU Name is %s.\n", dyn_config.cpu_name);
 
-    dyn_config.cpu_plugin = jSearch(jCPU, "plugin")->string;
+    dyn_config.cpu_plugin = get_config_string(dyn_config.cpu_config, "PLUGIN");
     if (dyn_config.cpu_plugin == NULL)
         LOG_FTL("Cannot determine CPU plugin file name.\n");
     LOG_INF("CPU plugin file name = %s.\n", dyn_config.cpu_plugin);
 
-    dyn_config.ram_size = jSearch(root, "ram")->number;
+    dyn_config.ram_size = get_config_hex("DYNOSAUR", "RAM_SIZE");
     if (dyn_config.ram_size == 0) {
         LOG_WRN("RAM size not specified.  Assuming 0x100.\n");
         dyn_config.ram_size = 0x100;
     }
 
-    dyn_config.clock_speed = jSearch(jCPU, "clock-speed")->number;
+    dyn_config.clock_speed = get_config_int(dyn_config.cpu_config, "CLOCK_SPEED");
     if (dyn_config.clock_speed == 0) {
         LOG_WRN("CPU Clock speed not configured.\n");
         dyn_config.clock_speed = 500;
     }
     LOG_INF("CPU clock speed set to %dMhZ.\n", dyn_config.clock_speed);
 
-    dyn_config.bin_dir = jSearch(jCPU, "directory")->string;
+    dyn_config.bin_dir = get_config_string(dyn_config.cpu_config, "DIRECTORY");
     if (dyn_config.bin_dir == NULL)
         LOG_WRN("Binary directory not specified.  Will use current directory.\n");
 
-    temp = jSearch(root, "timer-type")->string;
+    temp = get_config_string("DYNOSAUR", "TIMER_TYPE");
     if (temp != NULL && strncmp("CPU", temp, 3) == 0) {
         use_cpu_clock = true;
         LOG_INF("Using CPU clocks.\n");
