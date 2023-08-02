@@ -137,8 +137,8 @@ static void cycle()
         timer = current_timer;
     }
 
-    check_keyboard();
-    refresh_video();
+    if (refresh_video())
+	check_keyboard();
 }
 
 void load_config(char *config_name)

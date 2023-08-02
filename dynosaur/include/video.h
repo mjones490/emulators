@@ -3,6 +3,6 @@
 
 void init_video(bool full_init);
 void finalize_video(bool full_finalize);
-void refresh_video();
+bool refresh_video();
 
 #endif

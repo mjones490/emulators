@@ -31,9 +31,8 @@ BYTE key_stat_port(BYTE port, bool read, BYTE value)
 void check_keyboard()
 {
     SDL_Event e;
-
     while (SDL_PollEvent(&e) != 0) {
-        if (e.type == SDL_TEXTINPUT) {
+	if (e.type == SDL_TEXTINPUT) {
             LOG_DBG("Key = '%s'\n", e.text.text);
             key_set[0] = e.text.text[0];
         } else if (e.type == SDL_KEYDOWN) {
@@ -46,6 +45,7 @@ void check_keyboard()
             if (int_state)
                 cpu->interrupt(0x06);
         } else if (e.type == SDL_KEYUP) {
+	    LOG_DBG("Key Up\n");	
             key_stat &= 0xfe;
             if (int_state)
                 cpu->interrupt(0x06);

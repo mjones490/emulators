@@ -91,13 +91,13 @@ void render_sprites()
         render_sprite(i);
 }
 
-void refresh_video()
+bool refresh_video()
 {
     int pitch;
     Uint32 current_timer = SDL_GetTicks();
 
     if ((current_timer - video.timer) < 34)
-        return;
+        return false;
 
     video.timer = current_timer;
 
@@ -120,7 +120,7 @@ void refresh_video()
 
     SDL_RenderCopy(video.renderer, video.texture, NULL, NULL);
     SDL_RenderPresent(video.renderer);
-
+    return true;
 }
 
 BYTE vdp_ram_accessor(WORD address, bool read, BYTE value)
