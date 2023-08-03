@@ -222,6 +222,19 @@ static int interrupt(int argc, char **argv)
     return 0;
 }
 
+static int stats(int argc, char **argv)
+{
+    if (argc > 1) {
+        if (strncmp("off", argv[1], 4) == 0)
+            log_stats = LOG_STATS_OFF;
+	else if (strncmp("on", argv[1], 3) == 0)
+	    log_stats = LOG_STATS_ON;	
+    } else
+	log_stats = LOG_STATS;
+
+    return 0;
+}
+
 void shell_load_dynosaur_commands()
 {
     shell_add_command("step", "Execute single instruction.", step, true);
@@ -234,5 +247,7 @@ void shell_load_dynosaur_commands()
     shell_add_command("out", "Write value to port", out_port, false);
     shell_add_command("next", "Step, preceding through subroutine calls.", next, false);
     shell_add_command("int", "Trigger a cpu interrupt.", interrupt, false);
+    shell_add_command("stats", "View CPU stats", stats, false);
 }
+
 

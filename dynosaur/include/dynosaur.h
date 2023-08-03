@@ -18,6 +18,11 @@ extern struct cpu_interface *cpu;
 extern struct config_t dyn_config;
 extern WORD breakpoint;
 extern WORD nextpoint;
+extern unsigned char log_stats;
+
+#define LOG_STATS_OFF 0
+#define LOG_STATS     1
+#define LOG_STATS_ON  2
 
 static inline BYTE put_byte(WORD address, BYTE value)
 {

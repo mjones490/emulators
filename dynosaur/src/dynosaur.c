@@ -22,6 +22,8 @@ struct cpu_interface *cpu;
 WORD breakpoint = 0;
 WORD nextpoint = 0;
 
+unsigned char log_stats = 0;
+
 static void *plugin;
 
 void *load_plugin()
@@ -58,7 +60,7 @@ void unload_plugin(void *handle)
 
 static BYTE execute_instruction()
 {
-    BYTE clocks;
+    BYTE clocks = 0;
     bool halt = false;
     if (!cpu->get_halted()) {
         clocks = cpu->execute_instruction();
@@ -116,25 +118,45 @@ void timer_interrupt(Uint32 clocks)
 static void cycle()
 {
     static int bucket = 0;
-    Uint32 current_timer= SDL_GetTicks();
-    static Uint32 timer;
+    Uint32 current_timer = SDL_GetTicks();
+    static Uint32 cpu_timer = 0;
+    static Uint32 stat_timer = 0;
+    static int clocks_per_second = 0;
+    static int inst_per_second = 0;
     int clocks = 0;
-    if (timer == 0)
-        timer = current_timer;
 
+    if (cpu_timer == 0) {
+        cpu_timer = current_timer;
+	stat_timer = current_timer;
+    }
     
     if (bucket > 0) {
         clocks = execute_instruction();
+	if (clocks > 0)
+	    inst_per_second++;
         bucket -= clocks;
+	clocks_per_second += clocks;
         if (!cpu->get_halted() && use_cpu_clock) 
             timer_interrupt(clocks);
     }
     
-    if (current_timer > timer) {
-        bucket += (current_timer - timer) * dyn_config.clock_speed;
+    if (current_timer > cpu_timer) {
+        bucket += (current_timer - cpu_timer) * dyn_config.clock_speed;
         if (!cpu->get_halted() && !use_cpu_clock) 
-            timer_interrupt(current_timer - timer);
-        timer = current_timer;
+            timer_interrupt(current_timer - cpu_timer);
+        cpu_timer = current_timer;
+    }
+
+    if ((current_timer - stat_timer) >= 1024) {
+	if (log_stats > 0) {
+    	    LOG_INF("Clocks per second = %d\n", clocks_per_second);
+	    LOG_INF("Instructions per second = %d\n", inst_per_second);
+	    if (log_stats == LOG_STATS)
+		log_stats = LOG_STATS_OFF;
+	}
+	stat_timer = current_timer;
+	clocks_per_second = 0;
+	inst_per_second = 0;
     }
 
     if (refresh_video())
