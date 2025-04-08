@@ -55,8 +55,8 @@ void sound_hook(void *udata, Uint8 *stream, int len)
         for (ch = 0; ch < 3; ch++) {
             if (!(channel[ch].cnt--)) {
                 channel[ch].cnt = frequency(channel[ch].freq) / 2;
-                vol = (0x0f - channel[ch].vol);
-                channel[ch].amp = (channel[ch].amp > 0)? -vol : vol;
+                vol = (0x10 - (1 + channel[ch].vol)) * 2;
+                channel[ch].amp = (channel[ch].amp > 128)? 128 - vol : 128 + vol;
             }
             stream[i] += channel[ch].amp;
         }
@@ -66,8 +66,8 @@ void sound_hook(void *udata, Uint8 *stream, int len)
             noise.shiftReg = (noise.shiftReg >> 1) | 
                 ((noise.type? parity(noise.shiftReg & 0x0009) : noise.shiftReg & 0x0001) << 15);
             if (noise.shiftReg & 0x0001) {
-                vol = (0x0f - noise.vol);
-                noise.amp = (noise.amp > 0)? -vol : vol;
+                vol = (0x0f - noise.vol) * 2;
+                noise.amp = (noise.amp > 128)? 128 - vol : 128 + vol;
             }
         }
         noise.cnt--;
@@ -158,15 +158,17 @@ void init_sound()
 
     load_config();
 
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 3; i++) {
         channel[i].vol = 0x0f;
+        channel[i].amp = 128;
+    }
 
     noise.vol = 0x0f;
 
     freq_div = 111860 / sample_freq;
 
     SDL_Init(SDL_INIT_AUDIO);
-    if (Mix_OpenAudio(sample_freq, AUDIO_S8, 1, sample_freq / 64) == -1) {
+    if (Mix_OpenAudio(sample_freq, AUDIO_U8, 1, sample_freq / 64) == -1) {
         LOG_ERR("%s\n", Mix_GetError());
         return;
     }
